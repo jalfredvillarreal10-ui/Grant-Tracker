@@ -33,8 +33,8 @@ Content: Summary of total funding secured, upcoming high-value opportunities, an
 Front-End Priority: A clean, professional interface using the City of Laredo’s color palette.
 Responsive Design: Optimized for desktop use in the office and tablet use during field meetings.
 Information Hierarchy: High-value grants ($150k+) are visually highlighted with badges or distinct borders to draw immediate attention.
-Summary of Sorting & Logic Rules for Developers:
-Category	Primary Sort	Purpose
+# Summary of Sorting & Logic Rules for Developers:
+# Category	# Primary Sort	# Purpose
 Available	Reward Amount (Descending)	Prioritize the biggest financial wins.
 Applied	Deadline (Ascending)	Keep track of upcoming decision dates.
 Approved	Expiration Date (Soonest First)	Prevent funding lapses and ensure compliance.
