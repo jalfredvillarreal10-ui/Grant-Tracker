@@ -1,0 +1,125 @@
+import type { Grant } from '../types/grant';
+
+export const mockGrants: Grant[] = [
+  // Discovery (Available)
+  {
+    id: 'D1',
+    title: 'Advanced Community Health Resilience',
+    funderId: 'HHS-2026-ACHR',
+    source: 'Federal',
+    amount: 1200000,
+    awardFloor: 500000,
+    awardCeiling: 2000000,
+    status: 'available',
+    deadline: '2026-05-15',
+  },
+  {
+    id: 'D2',
+    title: 'Statewide Vaccination Outreach',
+    funderId: 'TX-DSHS-V7',
+    source: 'State',
+    amount: 450000,
+    awardFloor: 150000,
+    awardCeiling: 500000,
+    status: 'available',
+    deadline: '2026-04-10',
+  },
+  {
+    id: 'D3',
+    title: 'Diabetes Prevention & Wellness',
+    funderId: 'RWJF-3392',
+    source: 'Private',
+    amount: 155000,
+    awardFloor: 100000,
+    awardCeiling: 200000,
+    status: 'available',
+    deadline: '2026-06-01',
+  },
+  {
+    id: 'D4',
+    title: 'Urban Health Innovation Hub',
+    funderId: 'FED-CDC-UIH',
+    source: 'Federal',
+    amount: 850000,
+    awardFloor: 500000,
+    awardCeiling: 1000000,
+    status: 'available',
+    deadline: '2026-03-30',
+  },
+  {
+    id: 'D5',
+    title: 'Small Scale Neighborhood Clinic Support',
+    funderId: 'LOCAL-01',
+    source: 'Private',
+    amount: 75000, // Below $150k threshold, should be filtered in UI
+    status: 'available',
+    deadline: '2026-08-15',
+  },
+
+  // Lifecycle (Applied)
+  {
+    id: 'A1',
+    title: 'Emergency Response Expansion',
+    funderId: 'FEMA-2026-ERE',
+    source: 'Federal',
+    amount: 500000,
+    status: 'applied',
+    submissionDate: '2026-02-05',
+    expectedNotificationDate: '2026-03-20',
+    pocName: 'Sarah Jenkins',
+    pocEmail: 's.jenkins@fema.gov',
+    internalLead: 'Dr. Alejandro Gomez',
+    applicationStatus: 'Under Review',
+    deadline: '2026-02-10',
+  },
+  {
+    id: 'A2',
+    title: 'Maternal Care Rural Access',
+    funderId: 'HHS-MRA-09',
+    source: 'Federal',
+    amount: 320000,
+    status: 'applied',
+    submissionDate: '2026-01-20',
+    expectedNotificationDate: '2026-03-01',
+    pocName: 'Robert Chen',
+    pocEmail: 'r.chen@hhs.gov',
+    internalLead: 'Maria Rodriguez',
+    applicationStatus: 'Interview/Clarification',
+    deadline: '2026-01-25',
+  },
+
+  // Portfolio (Approved)
+  {
+    id: 'P1',
+    title: 'City-Wide Telehealth Initiative',
+    funderId: 'TX-DSHS-TELE',
+    source: 'State',
+    amount: 600000,
+    status: 'approved',
+    expirationDate: '2026-03-05', // T-Minus 7 Days approx (relative to Feb 26)
+    remainingAmount: 150000,
+    renewalStatus: 'None',
+  },
+  {
+    id: 'P2',
+    title: 'Pandemic Preparedness Lab',
+    funderId: 'CDC-LAB-P1',
+    source: 'Federal',
+    amount: 2500000,
+    status: 'approved',
+    expirationDate: '2026-02-27', // T-Minus 1 Day approx
+    remainingAmount: 45000,
+    renewalStatus: 'Initiated',
+  },
+  {
+    id: 'P3',
+    title: 'Community Health Worker Training',
+    funderId: 'HRSA-CHW-22',
+    source: 'Federal',
+    amount: 120000, // Even if < 150k, if it's approved it stays in portfolio
+    status: 'approved',
+    expirationDate: '2026-06-30',
+    remainingAmount: 110000,
+    renewalStatus: 'None',
+  }
+];

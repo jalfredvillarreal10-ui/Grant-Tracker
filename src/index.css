@@ -1,0 +1,133 @@
+:root {
+  --laredo-navy: #002d62;
+  --laredo-gold: #ffd700;
+  --laredo-gold-dark: #b8860b;
+  --laredo-white: #ffffff;
+  --laredo-light-gray: #f8f9fa;
+  --laredo-medium-gray: #e9ecef;
+  --laredo-dark-gray: #343a40;
+  --laredo-red: #c8102e;
+  --laredo-emerald: #059669;
+  
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: var(--laredo-dark-gray);
+  background-color: var(--laredo-light-gray);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Generic Utility Classes for Modern UI */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.p-4 { padding: 1rem; }
+.p-8 { padding: 2rem; }
+.w-full { width: 100%; }
+.max-w-md { max-width: 28rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 0.75rem; }
+.rounded-2xl { border-radius: 1rem; }
+.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+.bg-white { background-color: white; }
+.text-sm { font-size: 0.875rem; }
+.text-xs { font-size: 0.75rem; }
+.font-semibold { font-weight: 600; }
+.uppercase { text-transform: uppercase; }
+.tracking-wider { letter-spacing: 0.05em; }
+
+/* Branding Styles */
+.btn-primary {
+  background-color: var(--laredo-navy);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.2);
+}
+
+.badge-premium {
+  background-color: var(--laredo-gold);
+  color: var(--laredo-navy);
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  border: 1px solid var(--laredo-gold-dark);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.urgency-critical {
+  border: 2px solid var(--laredo-red) !important;
+  background-color: #fff5f5 !important;
+}
+
+.urgency-warning {
+  border-left: 6px solid var(--laredo-gold) !important;
+}
+
+/* Page Layout */
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: var(--laredo-navy);
+  color: white;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.nav-item {
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nav-item:hover, .nav-item.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-item.active {
+  border-left: 4px solid var(--laredo-gold);
+}
