@@ -1,4 +1,4 @@
-export type GrantStatus = 'available' | 'applied' | 'approved' | 'archived';
+export type GrantStatus = 'available' | 'applied' | 'approved' | 'archived' | 'denied' | 'withdrawn';
 export type FundingSource = 'Federal' | 'State' | 'Private';
 
 export interface Grant {
@@ -21,6 +21,11 @@ export interface Grant {
   pocEmail?: string;
   internalLead?: string;
   applicationStatus?: 'Submitted' | 'Under Review' | 'Interview/Clarification';
+
+  // Unsuccessful (Denied/Withdrawn)
+  rejectionReason?: 'Lack of Matching Funds' | 'Eligibility Technicality' | 'Funder Budget Cut' | 'Proposal Score' | 'Other';
+  feedbackSummary?: string;
+  denialDate?: string;
 
   // Portfolio (Approved)
   expirationDate?: string;

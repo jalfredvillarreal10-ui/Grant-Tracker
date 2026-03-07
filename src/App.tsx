@@ -30,10 +30,18 @@ function App() {
           funderId: g.grant_number,
           title: g.title,
           source: g.agency,
-          amount: 250000, // Hardcoded premium amount so it shows in Discovery filter
-          status: 'available', // Defaulting to available for new intakes
+          amount: g.amount || 0,
+          status: g.status,
           deadline: g.deadline,
-          applicationStatus: 'Not Started'
+          submissionDate: g.submission_date,
+          expectedNotificationDate: g.expected_notification_date,
+          internalLead: g.internal_lead,
+          applicationStatus: g.application_status,
+          rejectionReason: g.rejection_reason,
+          feedbackSummary: g.feedback_summary,
+          denialDate: g.denial_date,
+          // Renewal fields are currently handled in memory or need more DB fields
+          renewalStatus: 'None'
         }));
         
         setGrants(mappedGrants);
@@ -42,6 +50,35 @@ function App() {
       console.error("Failed to fetch grants:", error);
     } finally {
       setIsRefreshing(false)
+    }
+  }
+
+  const saveGrantUpdate = async (grant: Grant) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/grants/${grant.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_number: grant.funderId,
+          title: grant.title,
+          agency: grant.source,
+          deadline: grant.deadline,
+          amount: grant.amount,
+          status: grant.status,
+          submission_date: grant.submissionDate,
+          expected_notification_date: grant.expectedNotificationDate,
+          internal_lead: grant.internalLead,
+          application_status: grant.applicationStatus,
+          rejection_reason: grant.rejectionReason,
+          feedback_summary: grant.feedbackSummary,
+          denial_date: grant.denialDate
+        })
+      });
+      if (response.ok) {
+        fetchGrants();
+      }
+    } catch (error) {
+      console.error("Failed to update grant:", error);
     }
   }
 
@@ -63,21 +100,32 @@ function App() {
     setUserEmail('')
   }
 
-  // NOTE: For now, these just update UI state. 
-  // In the future, we will connect these to PUT/PATCH backend routes.
-  const moveToApplied = (id: string) => {
-    setGrants(prev => prev.map(g => {
-      if (g.id === id) {
-        return { 
-          ...g, 
-          status: 'applied', 
-          submissionDate: new Date().toISOString().split('T')[0],
-          applicationStatus: 'Submitted'
-        }
-      }
-      return g
-    }))
-    setActivePage('lifecycle')
+  const moveToApplied = async (id: string) => {
+    const grant = grants.find(g => g.id === id);
+    if (grant) {
+      const updatedGrant: Grant = {
+        ...grant,
+        status: 'applied',
+        submissionDate: new Date().toISOString().split('T')[0],
+        applicationStatus: 'Submitted'
+      };
+      await saveGrantUpdate(updatedGrant);
+      setActivePage('lifecycle');
+    }
+  }
+
+  const updateGrantStatus = async (id: string, status: GrantStatus, rejectionReason?: any, feedbackSummary?: string) => {
+    const grant = grants.find(g => g.id === id);
+    if (grant) {
+      const updatedGrant: Grant = {
+        ...grant,
+        status,
+        rejectionReason,
+        feedbackSummary,
+        denialDate: (status === 'denied' || status === 'withdrawn') ? new Date().toISOString().split('T')[0] : undefined
+      };
+      await saveGrantUpdate(updatedGrant);
+    }
   }
 
   const handleAction = (id: string, action: string) => {
@@ -145,7 +193,7 @@ function App() {
           </div>
 
           {activePage === 'discovery' && <Discovery grants={grants} onMoveToApplied={moveToApplied} onGrantSaved={fetchGrants} />}
-          {activePage === 'lifecycle' && <Lifecycle grants={grants} />}
+          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'available')} />}
           {activePage === 'portfolio' && <Portfolio grants={grants} onAction={handleAction} />}
           {activePage === 'reporting' && <Reporting grants={grants} />}
         </div>

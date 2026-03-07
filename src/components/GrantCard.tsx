@@ -1,16 +1,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock, ArrowRight, User, Mail } from 'lucide-react';
+import { Clock, ArrowRight, User, Mail, RefreshCw } from 'lucide-react';
 import type { Grant } from '../types/grant';
 
 interface GrantCardProps {
   grant: Grant;
   onMoveToApplied?: (id: string) => void;
   onAction?: (id: string, action: string) => void;
+  onUpdateStatus?: (id: string, status: any) => void;
+  onReActivate?: (id: string) => void;
+  onShowFeedback?: (grant: Grant) => void;
 }
 
-const GrantCard: React.FC<GrantCardProps> = ({ grant, onMoveToApplied, onAction }) => {
+const GrantCard: React.FC<GrantCardProps> = ({ 
+  grant, 
+  onMoveToApplied, 
+  onAction, 
+  onUpdateStatus,
+  onReActivate,
+  onShowFeedback
+}) => {
   const isPremium = grant.amount >= 500000;
+  const isUnsuccessful = grant.status === 'denied' || grant.status === 'withdrawn';
 
   // Urgency logic for Approved grants
   let urgencyLevel: 'none' | 'warning' | 'critical' = 'none';
@@ -32,15 +43,19 @@ const GrantCard: React.FC<GrantCardProps> = ({ grant, onMoveToApplied, onAction 
     return '';
   };
 
+  const cardStyle = isUnsuccessful 
+    ? { backgroundColor: '#f1f5f9', borderLeft: '6px solid #64748b' } 
+    : { position: 'relative' as const, overflow: 'hidden' as const };
+
   return (
     <motion.div 
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white rounded-xl shadow-lg p-6 flex flex-col gap-4 border border-zinc-100 ${getUrgencyClass()}`}
-      style={{ position: 'relative', overflow: 'hidden' }}
+      className={`rounded-xl shadow-lg p-6 flex flex-col gap-4 border border-zinc-100 ${getUrgencyClass()} ${!isUnsuccessful ? 'bg-white' : ''}`}
+      style={cardStyle}
     >
-      {isPremium && (
+      {isPremium && !isUnsuccessful && (
         <div className="badge-premium" style={{ position: 'absolute', top: '12px', right: '12px' }}>
           PREMIUM OPPORTUNITY
         </div>
@@ -48,20 +63,48 @@ const GrantCard: React.FC<GrantCardProps> = ({ grant, onMoveToApplied, onAction 
 
       <div className="flex justify-between items-start pr-32">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{grant.funderId}</span>
-          <h3 className="text-xl font-bold text-blue-900 m-0">{grant.title}</h3>
+          <span className={`text-xs font-bold uppercase tracking-widest ${isUnsuccessful ? 'text-zinc-500' : 'text-zinc-400'}`}>
+            {grant.funderId}
+          </span>
+          <h3 className={`text-xl font-bold m-0 ${isUnsuccessful ? 'text-zinc-700' : 'text-blue-900'}`}>
+            {grant.title}
+          </h3>
         </div>
+        {isUnsuccessful && (
+          <div className="flex items-center gap-2" style={{ position: 'absolute', top: '12px', right: '12px' }}>
+            <span className="text-[10px] font-bold uppercase bg-zinc-200 text-zinc-600 px-2 py-1 rounded">
+              {grant.status}
+            </span>
+            <button 
+              onClick={() => onShowFeedback?.(grant)}
+              title="View Reviewer Feedback"
+              className="p-1.5 bg-zinc-200 text-zinc-600 rounded-full hover:bg-zinc-300 transition-colors"
+            >
+              <Mail size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-6 py-2 border-y border-zinc-50">
+      <div className={`flex items-center gap-6 py-2 border-y ${isUnsuccessful ? 'border-zinc-200' : 'border-zinc-50'}`}>
         <div className="flex flex-col">
           <span className="text-xs text-zinc-400 uppercase font-semibold">Reward Amount</span>
-          <span className="text-lg font-bold text-zinc-900">${grant.amount.toLocaleString()}</span>
+          <span className={`text-lg font-bold ${isUnsuccessful ? 'text-zinc-600' : 'text-zinc-900'}`}>
+            ${grant.amount.toLocaleString()}
+          </span>
         </div>
         <div className="flex flex-col">
           <span className="text-xs text-zinc-400 uppercase font-semibold">Source</span>
-          <span className="text-sm font-medium text-zinc-700">{grant.source}</span>
+          <span className={`text-sm font-medium ${isUnsuccessful ? 'text-zinc-500' : 'text-zinc-700'}`}>
+            {grant.source}
+          </span>
         </div>
+        {isUnsuccessful && (
+          <div className="flex flex-col ml-auto">
+            <span className="text-xs text-zinc-400 uppercase font-semibold">Denial Date</span>
+            <span className="text-sm font-bold text-zinc-600">{grant.denialDate}</span>
+          </div>
+        )}
       </div>
 
       {/* Conditional Content based on Status */}
@@ -99,7 +142,7 @@ const GrantCard: React.FC<GrantCardProps> = ({ grant, onMoveToApplied, onAction 
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-2 gap-4 text-xs mb-2">
             <div className="flex items-center gap-2 text-zinc-600">
               <User className="w-3 h-3" /> <span>{grant.internalLead}</span>
             </div>
@@ -107,6 +150,41 @@ const GrantCard: React.FC<GrantCardProps> = ({ grant, onMoveToApplied, onAction 
               <Mail className="w-3 h-3" /> <span>Decision: {grant.expectedNotificationDate}</span>
             </div>
           </div>
+          <div className="flex gap-2 border-t pt-4">
+            <button 
+              onClick={() => onUpdateStatus?.(grant.id, 'denied')}
+              className="flex-1 text-[10px] font-bold uppercase py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Mark Denied
+            </button>
+            <button 
+              onClick={() => onUpdateStatus?.(grant.id, 'withdrawn')}
+              className="flex-1 text-[10px] font-bold uppercase py-2 border border-zinc-200 text-zinc-600 rounded-lg hover:bg-zinc-50 transition-colors"
+            >
+              Withdraw
+            </button>
+            <button 
+              onClick={() => onUpdateStatus?.(grant.id, 'approved')}
+              className="flex-1 text-[10px] font-bold uppercase py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              Approve
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isUnsuccessful && (
+        <div className="flex flex-col gap-3">
+          <div className="text-xs italic text-zinc-500 bg-zinc-200/50 p-2 rounded">
+            <strong>Reason:</strong> {grant.rejectionReason}
+          </div>
+          <button 
+            onClick={() => onReActivate?.(grant.id)}
+            style={{ backgroundColor: '#C5B358' }}
+            className="w-full py-2 rounded-lg text-white text-xs font-bold uppercase flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+          >
+            <RefreshCw size={14} /> Re-Activate Opportunity
+          </button>
         </div>
       )}
 

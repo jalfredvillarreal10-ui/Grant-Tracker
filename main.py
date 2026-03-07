@@ -39,8 +39,16 @@ def init_db():
                 title TEXT NOT NULL,
                 agency TEXT NOT NULL,
                 deadline DATE NOT NULL,
-                status TEXT DEFAULT 'Active',
-                renewals_needed BOOLEAN DEFAULT 0
+                amount INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'available',
+                renewals_needed BOOLEAN DEFAULT 0,
+                submission_date DATE,
+                expected_notification_date DATE,
+                internal_lead TEXT,
+                application_status TEXT,
+                rejection_reason TEXT,
+                feedback_summary TEXT,
+                denial_date DATE
             )
         ''')
         conn.commit()
@@ -65,8 +73,16 @@ class GrantBase(BaseModel):
     title: str
     agency: str
     deadline: str
-    status: str = "Active"
+    amount: int = 0
+    status: str = "available"
     renewals_needed: bool = False
+    submission_date: Optional[str] = None
+    expected_notification_date: Optional[str] = None
+    internal_lead: Optional[str] = None
+    application_status: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    feedback_summary: Optional[str] = None
+    denial_date: Optional[str] = None
 
 class GrantResponse(GrantBase):
     id: int
@@ -89,13 +105,33 @@ def create_grant(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_con
     try:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO grants (grant_number, title, agency, deadline, status, renewals_needed)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.status, grant.renewals_needed))
+            INSERT INTO grants (grant_number, title, agency, deadline, amount, status, renewals_needed)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status, grant.renewals_needed))
         conn.commit()
         return {"message": "Grant added successfully", "grant_number": grant.grant_number}
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="A grant with this number already exists.")
+
+@app.put("/api/grants/{grant_id}", response_model=dict)
+def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_connection)):
+    """Update an existing grant's details."""
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE grants 
+        SET grant_number = ?, title = ?, agency = ?, deadline = ?, amount = ?, status = ?, 
+            renewals_needed = ?, submission_date = ?, expected_notification_date = ?, 
+            internal_lead = ?, application_status = ?, rejection_reason = ?, 
+            feedback_summary = ?, denial_date = ?
+        WHERE id = ?
+    ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status, 
+          grant.renewals_needed, grant.submission_date, grant.expected_notification_date, 
+          grant.internal_lead, grant.application_status, grant.rejection_reason, 
+          grant.feedback_summary, grant.denial_date, grant_id))
+    conn.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Grant not found.")
+    return {"message": "Grant updated successfully"}
 
 @app.get("/api/grantsgov/search/{opportunity_number}")
 def fetch_from_grants_gov(opportunity_number: str):
