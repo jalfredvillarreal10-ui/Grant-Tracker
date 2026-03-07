@@ -96,9 +96,14 @@ export const mockGrants: Grant[] = [
     source: 'State',
     amount: 600000,
     status: 'approved',
-    expirationDate: '2026-03-05', // T-Minus 7 Days approx (relative to Feb 26)
+    expirationDate: '2026-03-15', // Critical urgency (> 500k = Laredo Gold)
+    spentAmount: 450000,
     remainingAmount: 150000,
     renewalStatus: 'None',
+    complianceCategory: 'Infrastructure',
+    programManager: 'David Martinez',
+    nextReportDue: '2026-03-10',
+    onboardingDate: '2025-06-01'
   },
   {
     id: 'P2',
@@ -107,19 +112,42 @@ export const mockGrants: Grant[] = [
     source: 'Federal',
     amount: 2500000,
     status: 'approved',
-    expirationDate: '2026-02-27', // T-Minus 1 Day approx
+    expirationDate: '2026-03-01', // Critical urgency & Laredo Gold Priority
+    spentAmount: 2455000,
     remainingAmount: 45000,
     renewalStatus: 'Initiated',
+    complianceCategory: 'Infrastructure',
+    programManager: 'Dr. Linda White',
+    nextReportDue: '2026-02-25',
+    onboardingDate: '2025-12-15'
   },
   {
     id: 'P3',
     title: 'Community Health Worker Training',
     funderId: 'HRSA-CHW-22',
     source: 'Federal',
-    amount: 120000, // Even if < 150k, if it's approved it stays in portfolio
+    amount: 120000, 
     status: 'approved',
     expirationDate: '2026-06-30',
+    spentAmount: 10000,
     remainingAmount: 110000,
     renewalStatus: 'None',
+    complianceCategory: 'Workforce Development',
+    programManager: 'Maria Rodriguez',
+    nextReportDue: '2026-04-15',
+    onboardingDate: '2026-02-15' // Recently Awarded
+  },
+  {
+    id: 'P4',
+    title: 'Bilingual Clinical Support Svcs',
+    funderId: 'TX-HLTH-BCS',
+    source: 'State',
+    amount: 350000,
+    status: 'closed',
+    spentAmount: 350000,
+    remainingAmount: 0,
+    complianceCategory: 'Clinical Services',
+    programManager: 'David Martinez',
+    onboardingDate: '2024-01-10'
   }
 ];

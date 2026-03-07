@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Clock, ArrowRight, User, Mail, RefreshCw } from 'lucide-react';
+import { Clock, ArrowRight, User, Mail, RefreshCw, Briefcase, FileText, ExternalLink } from 'lucide-react';
 import type { Grant } from '../types/grant';
 
 interface GrantCardProps {
@@ -43,6 +43,8 @@ const GrantCard: React.FC<GrantCardProps> = ({
     return '';
   };
 
+  const burnRate = grant.amount > 0 ? ((grant.spentAmount || 0) / grant.amount) * 100 : 0;
+
   const cardStyle = isUnsuccessful 
     ? { backgroundColor: '#f1f5f9', borderLeft: '6px solid #64748b' } 
     : { position: 'relative' as const, overflow: 'hidden' as const };
@@ -56,8 +58,11 @@ const GrantCard: React.FC<GrantCardProps> = ({
       style={cardStyle}
     >
       {isPremium && !isUnsuccessful && (
-        <div className="badge-premium" style={{ position: 'absolute', top: '12px', right: '12px' }}>
-          PREMIUM OPPORTUNITY
+        <div 
+          className={grant.status === 'approved' ? 'badge-premium bg-[#ffd700] text-[#002d62]' : 'badge-premium'} 
+          style={{ position: 'absolute', top: '12px', right: '12px', borderColor: '#b8860b' }}
+        >
+          {grant.status === 'approved' ? 'LAREDO GOLD PRIORITY' : 'PREMIUM OPPORTUNITY'}
         </div>
       )}
 
@@ -88,7 +93,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
       <div className={`flex items-center gap-6 py-2 border-y ${isUnsuccessful ? 'border-zinc-200' : 'border-zinc-50'}`}>
         <div className="flex flex-col">
-          <span className="text-xs text-zinc-400 uppercase font-semibold">Reward Amount</span>
+          <span className="text-xs text-zinc-400 uppercase font-semibold">Total Award</span>
           <span className={`text-lg font-bold ${isUnsuccessful ? 'text-zinc-600' : 'text-zinc-900'}`}>
             ${grant.amount.toLocaleString()}
           </span>
@@ -99,6 +104,14 @@ const GrantCard: React.FC<GrantCardProps> = ({
             {grant.source}
           </span>
         </div>
+        {grant.status === 'approved' && (
+          <div className="flex flex-col ml-auto">
+            <span className="text-xs text-zinc-400 uppercase font-semibold">Category</span>
+            <span className="text-[10px] font-bold bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">
+              {grant.complianceCategory || 'General'}
+            </span>
+          </div>
+        )}
         {isUnsuccessful && (
           <div className="flex flex-col ml-auto">
             <span className="text-xs text-zinc-400 uppercase font-semibold">Denial Date</span>
@@ -190,7 +203,37 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
       {grant.status === 'approved' && (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-bold uppercase text-zinc-400">
+              <span>Spending Burn Rate</span>
+              <span className={burnRate > 90 ? 'text-red-600' : 'text-emerald-600'}>{Math.round(burnRate)}% Utilized</span>
+            </div>
+            <div className="w-full bg-zinc-100 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-1000 ${burnRate > 90 ? 'bg-red-600' : 'bg-emerald-600'}`} 
+                style={{ width: `${Math.min(burnRate, 100)}%` }} 
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-[11px]">
+            <div className="flex flex-col gap-1">
+              <span className="text-zinc-400 uppercase font-bold tracking-tighter flex items-center gap-1">
+                <Briefcase size={12} /> Program Manager
+              </span>
+              <span className="font-semibold text-zinc-700">{grant.programManager || 'Unassigned'}</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-zinc-400 uppercase font-bold tracking-tighter flex items-center gap-1">
+                <FileText size={12} /> Next Report Due
+              </span>
+              <div className="flex items-center gap-1 font-semibold text-blue-900">
+                {grant.nextReportDue || 'TBD'} <ExternalLink size={10} className="cursor-pointer" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-zinc-50">
             <div className="flex flex-col">
               <span className="text-xs text-zinc-400 uppercase font-semibold">Expires In</span>
               <span className={`text-sm font-bold ${daysRemaining < 30 ? 'text-red-600' : 'text-zinc-900'}`}>
@@ -214,7 +257,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
               onClick={() => onAction?.(grant.id, 'close')}
               className="flex-1 text-xs font-bold uppercase py-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
             >
-              Closeout
+              Closeout Checklist
             </button>
           </div>
         </div>

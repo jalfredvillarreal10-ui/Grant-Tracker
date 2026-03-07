@@ -1,5 +1,6 @@
-export type GrantStatus = 'available' | 'applied' | 'approved' | 'archived' | 'denied' | 'withdrawn';
+export type GrantStatus = 'available' | 'applied' | 'approved' | 'archived' | 'denied' | 'withdrawn' | 'closed';
 export type FundingSource = 'Federal' | 'State' | 'Private';
+export type ComplianceCategory = 'Clinical Services' | 'Infrastructure' | 'Workforce Development' | 'Research' | 'Other';
 
 export interface Grant {
   id: string;
@@ -29,6 +30,12 @@ export interface Grant {
 
   // Portfolio (Approved)
   expirationDate?: string;
+  spentAmount?: number;
   remainingAmount?: number;
   renewalStatus?: 'None' | 'Initiated' | 'Complete';
+  complianceCategory?: ComplianceCategory;
+  programManager?: string;
+  nextReportDue?: string;
+  onboardingDate?: string; // To track "Recently Awarded" (90 days)
+  isExtended?: boolean;
 }

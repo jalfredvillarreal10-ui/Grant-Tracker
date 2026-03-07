@@ -40,8 +40,15 @@ function App() {
           rejectionReason: g.rejection_reason,
           feedbackSummary: g.feedback_summary,
           denialDate: g.denial_date,
-          // Renewal fields are currently handled in memory or need more DB fields
-          renewalStatus: 'None'
+          expirationDate: g.expiration_date,
+          spentAmount: g.spent_amount || 0,
+          remainingAmount: g.amount - (g.spent_amount || 0),
+          complianceCategory: g.compliance_category,
+          programManager: g.program_manager,
+          nextReportDue: g.next_report_due,
+          onboardingDate: g.onboarding_date,
+          isExtended: !!g.is_extended,
+          renewalStatus: g.renewal_status || 'None'
         }));
         
         setGrants(mappedGrants);

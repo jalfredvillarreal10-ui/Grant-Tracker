@@ -33,12 +33,24 @@ To eliminate visual clutter, the platform is divided into three dedicated pages.
       + Internal Lead (The staff member who wrote the grant).
     * Status Tracking: Visual progress bar (e.g., Submitted → Under Review → Interview/Clarification Phase).
 - C. The Portfolio Page (Approved/Awarded Grants)
-    * Purpose: Active management of secured funds to ensure compliance and prevent expiration.
-    * UI Layout: High-alert dashboard with visual "Urgency Indicators."
-    * Primary Sort: Expiration Date (Soonest First) – This is the "Urgency Sort."
-    * Critical Alerts: Grants expiring within 30 days are highlighted with a red border or "Critical" badge.
-    * Financial Tracking: Displays the total award amount vs. remaining time in the grant cycle.
-    * Action Button: "Renewal Initiated" or "Closeout Complete."
+    Purpose: Active management of secured funds to ensure compliance, track spending milestones, and prevent the expiration of high-value resources.
+    Primary Sort: Expiration Date (Soonest First) – This maintains the "Urgency Focus" to prevent funding loss.
+    The "Active Portfolio" Dropdown Menu:
+    Located at the top-left of the page, this menu allows administrators to filter the list of awarded grants by operational status:
+    * View All Active Awards: (Default) Shows all currently funded grants.
+    * Recently Awarded: Focuses on grants secured within the last 90 days (Onboarding phase).
+    * Under Extension: Highlights grants where a "Renewal" or "No-Cost Extension" has been filed.
+    * Successfully Closed: A historical dropdown to view completed grants for audit purposes.
+    UI Layout & High-Value Columns:
+    To manage complex healthcare funding, the awarded list includes specific data points not found on other pages:
+    * Total Award Amount ($): The full contract value.
+    * Spending Burn Rate: A visual percentage bar showing funds utilized vs. time elapsed.
+    * Compliance Category: (e.g., Clinical Services, Infrastructure, Workforce Development).
+    * Assigned Program Manager: The specific department head responsible for the funds.
+    * Reporting Milestones: A "Next Report Due" date column with a direct link to the funder’s portal.
+    Action Buttons for Awarded Grants:
+    * "Initiate Renewal": Shifts the grant into a "Renewal Pending" status, creating a duplicate entry back in the Lifecycle (Applied) tab for the next cycle.
+    * "Closeout Checklist": Triggers a pop-up with a standard City of Laredo protocol for finalizing high-value accounts.
 # 4. Automated "Urgency Trigger" Notification System
 To ensure the department never loses a funding stream due to administrative oversight, LHGP features an automated email relay system tied specifically to the Portfolio (Approved) page:
 - T-Minus 7 Days: An automated "Reminder" email is sent to the Department Head and the assigned Program Manager.
@@ -53,12 +65,17 @@ To ensure the department never loses a funding stream due to administrative over
 - High-Value Highlighting: Any grant over $500,000 receives a "Premium Opportunity" visual badge across all pages.
 - Responsive Architecture: Fully optimized for desktop (office use) and tablets (on-site health inspections or meetings).
 - Data Integrity: Each page includes a "Refresh Data" trigger to pull the latest updates from the grant database.
+# 7. Technical Specification Addendum: The "Awarded" UX
+- Visual Urgency: Grants appearing in the "Approved" list that are within 30 days of expiration are pinned to the top of the list regardless of other filters, ensuring they are never missed.
+- The "Laredo Gold" Badge: Any awarded grant with a total value exceeding $500,000 features a persistent Gold Badge in the list view, signaling its status as a "Departmental Priority Asset."
+- Export Functionality: The Awarded list includes a "Quick Export" button to generate a Monthly Grant Status Report specifically for the Health Department Director.
+
 # Summary of Logic Rules for Developers
-| Page/Link |	Primary Sort                    |	Objective            |	Key UI Focus                  |
-| --------- | ------------------------------- | -------------------- | ------------------------------ |
-| Available |	Reward Amount (High to Low)     |	Prioritize ROI	     | Financial Value & Eligibility  |
-| Applied	  | Deadline (Soonest First)        |	Monitor Pipeline     |	Follow-up & Decision Dates    |
-| Approved  |	Expiration Date (Soonest First) |	Prevent Funding Loss |	Compliance & Renewal Urgency  |
+| Page/Link | Primary Sort | Objective | Key UI Focus | Dropdown/Filter Content |
+| --------- | ------------ | --------- | ------------ | ----------------------- |
+| Available | Reward Amount (High to Low) | Prioritize ROI | Financial Value & Eligibility | Filter by Source (Federal/State/Private) |
+| Applied | Deadline (Soonest First) | Monitor Pipeline | Follow-up & Decision Dates | Filter by Internal Lead (Staff Member) |
+| Approved | Expiration Date (Soonest First) | Compliance & Renewal | Urgency & Burn Rate | Filter by Award Status (Active/Closed/Renewal) |
 
 
 ## License  
