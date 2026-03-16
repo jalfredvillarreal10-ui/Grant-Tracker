@@ -6,9 +6,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-# ==========================================
+
 # 1. APP INITIALIZATION & MIDDLEWARE
-# ==========================================
 app = FastAPI(
     title="Grant Tracker API",
     description="Backend API for centralized grant tracking and management.",
@@ -23,9 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==========================================
 # 2. DATABASE SETUP
-# ==========================================
 DB_FILE = "grants.db"
 
 def init_db():
@@ -60,7 +57,7 @@ def init_db():
         ''')
         conn.commit()
 
-# Run database initialization on startup
+# Run database initialization on startup when I get it working
 init_db()
 
 # Dependency to get a database connection per request
@@ -72,9 +69,9 @@ def get_db_connection():
     finally:
         conn.close()
 
-# ==========================================
+
 # 3. PYDANTIC MODELS (DATA VALIDATION)
-# ==========================================
+
 class GrantBase(BaseModel):
     grant_number: str
     title: str
@@ -101,9 +98,7 @@ class GrantBase(BaseModel):
 class GrantResponse(GrantBase):
     id: int
 
-# ==========================================
 # 4. API ENDPOINTS (ROUTES)
-# ==========================================
 
 @app.get("/api/grants", response_model=List[GrantResponse])
 def get_all_grants(conn: sqlite3.Connection = Depends(get_db_connection)):
@@ -179,7 +174,7 @@ def fetch_from_grants_gov(opportunity_number: str):
                 formatted_date = ""
                 
                 if raw_date and raw_date != "None":
-                    # Strip timestamps and clean the string
+                   
                     clean_date = raw_date.split("T")[0].split(" ")[0]
                     
                     # Test all known government date formats
@@ -191,7 +186,7 @@ def fetch_from_grants_gov(opportunity_number: str):
                     for fmt in formats_to_try:
                         try:
                             dt = datetime.strptime(clean_date, fmt)
-                            formatted_date = dt.strftime("%Y-%m-%d") # The format React needs
+                            formatted_date = dt.strftime("%Y-%m-%d")
                             break
                         except ValueError:
                             continue
@@ -238,7 +233,7 @@ def search_grants_gov_keyword(keyword: str):
                     
                 raw_date = str(hit.get("closeDate") or "").strip()
                 formatted_date = ""
-                sort_date = "9999-12-31" # Default to far future so blank deadlines drop to the bottom 
+                sort_date = "9999-12-31" # Default to far future if no valid date is found
                 
                 if raw_date and raw_date != "None":
                     clean_date = raw_date.split("T")[0].split(" ")[0]
@@ -256,14 +251,14 @@ def search_grants_gov_keyword(keyword: str):
                             continue
                 
                 results.append({
-                    "grant_number": hit.get("oppNum") or "Unknown",
+                    "grant_number": hit.get("number") or hit.get("oppNum") or "Unknown",
                     "title": hit.get("title") or hit.get("opportunityTitle") or "Title not found",
                     "agency": hit.get("agencyName") or hit.get("agency") or "Agency not found",
                     "deadline": formatted_date,
                     "sort_date": sort_date 
                 })
         
-        # THE SORTING ENGINE: Sort the array by the closest deadline ascending
+        # Sorting engine
         results.sort(key=lambda x: x["sort_date"])
         
         # Clean up our temporary sorting key before sending to React
