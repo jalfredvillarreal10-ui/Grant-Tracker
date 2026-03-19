@@ -8,18 +8,48 @@
   --laredo-dark-gray: #343a40;
   --laredo-red: #c8102e;
   --laredo-emerald: #059669;
+  --transition-speed: 0.3s;
   
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+}
 
-  color: var(--laredo-dark-gray);
-  background-color: var(--laredo-light-gray);
+/* Theme Variables */
+:root, [data-theme="light"] {
+  --bg-page: #f0f4f9;
+  --bg-card: #ffffff;
+  --bg-sidebar: #002d62;
+  --text-primary: #0d1e3d;
+  --text-secondary: #3d5473;
+  --gold-accent: #b08818;
+  --border-color: #dde4ef;
+  --nav-hover: rgba(255, 255, 255, 0.1);
+  --bg-unsuccessful: #f1f5f9;
+  --border-unsuccessful: #64748b;
+  --input-bg: #f9f9f9;
+}
+
+[data-theme="dark"] {
+  --bg-page: #0b0f1a;
+  --bg-card: #1a2236;
+  --bg-sidebar: #080c14;
+  --text-primary: #e8edf5;
+  --text-secondary: #8fa3bf;
+  --gold-accent: #c9a227;
+  --border-color: #243047;
+  --nav-hover: rgba(255, 255, 255, 0.05);
+  --bg-unsuccessful: #1a2236; /* Match card bg or slightly different */
+  --border-unsuccessful: #475569;
+  --input-bg: rgba(255, 255, 255, 0.05);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color var(--transition-speed), color var(--transition-speed);
 }
 
 #root {
@@ -46,7 +76,7 @@ body {
 .rounded-xl { border-radius: 0.75rem; }
 .rounded-2xl { border-radius: 1rem; }
 .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-.bg-white { background-color: white; }
+.bg-white { background-color: var(--bg-card); }
 .text-sm { font-size: 0.875rem; }
 .text-xs { font-size: 0.75rem; }
 .font-semibold { font-weight: 600; }
@@ -65,28 +95,33 @@ body {
   transition: all 0.2s;
 }
 
+[data-theme="dark"] .btn-primary {
+  background-color: var(--gold-accent);
+  color: #000;
+}
+
 .btn-primary:hover {
   filter: brightness(1.2);
 }
 
 .badge-premium {
-  background-color: var(--laredo-gold);
-  color: var(--laredo-navy);
+  background-color: var(--gold-accent);
+  color: var(--bg-sidebar);
   font-weight: 800;
   padding: 0.2rem 0.6rem;
   border-radius: 9999px;
   font-size: 0.7rem;
-  border: 1px solid var(--laredo-gold-dark);
+  border: 1px solid var(--gold-accent);
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
 
 .urgency-critical {
   border: 2px solid var(--laredo-red) !important;
-  background-color: #fff5f5 !important;
+  background-color: rgba(200, 16, 46, 0.05) !important;
 }
 
 .urgency-warning {
-  border-left: 6px solid var(--laredo-gold) !important;
+  border-left: 6px solid var(--gold-accent) !important;
 }
 
 /* Page Layout */
@@ -97,17 +132,20 @@ body {
 
 .sidebar {
   width: 260px;
-  background-color: var(--laredo-navy);
+  background-color: var(--bg-sidebar);
   color: white;
   padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
+  transition: background-color var(--transition-speed);
 }
 
 .main-content {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
+  background-color: var(--bg-page);
+  transition: background-color var(--transition-speed);
 }
 
 .nav-item {
@@ -124,10 +162,24 @@ body {
 }
 
 .nav-item:hover, .nav-item.active {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--nav-hover);
   color: white;
 }
 
 .nav-item.active {
   border-left: 4px solid var(--laredo-gold);
 }
+
+/* Override utility colors to use theme variables */
+.text-blue-900 { color: var(--text-primary) !important; }
+.text-zinc-700 { color: var(--text-primary) !important; }
+.text-zinc-600 { color: var(--text-secondary) !important; }
+.text-zinc-500 { color: var(--text-secondary) !important; }
+.text-zinc-400 { color: var(--text-secondary) !important; opacity: 0.8; }
+.bg-zinc-50 { background-color: rgba(0, 0, 0, 0.02) !important; }
+[data-theme="dark"] .bg-zinc-50 { background-color: rgba(255, 255, 255, 0.03) !important; }
+.bg-zinc-100 { background-color: var(--border-color) !important; opacity: 0.5; }
+[data-theme="dark"] .bg-zinc-100 { opacity: 0.2; }
+.border-zinc-100 { border-color: var(--border-color) !important; }
+.border-zinc-200 { border-color: var(--border-color) !important; }
+.border-zinc-50 { border-color: var(--border-color) !important; opacity: 0.5; }

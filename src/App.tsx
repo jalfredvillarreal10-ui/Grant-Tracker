@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw } from 'lucide-react'
+import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw, Sun, Moon } from 'lucide-react'
 import Login from './components/Login'
 import Discovery from './pages/Discovery'
 import Lifecycle from './pages/Lifecycle'
 import Portfolio from './pages/Portfolio'
 import Reporting from './pages/Reporting'
-import type { Grant } from './types/grant'
+import type { Grant, GrantStatus } from './types/grant'
 
 type Page = 'discovery' | 'lifecycle' | 'portfolio' | 'reporting';
 
@@ -15,6 +15,19 @@ function App() {
   const [activePage, setActivePage] = useState<Page>('discovery')
   const [grants, setGrants] = useState<Grant[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
+  })
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light')
+  }
 
   // Fetch live grants from Python backend
   const fetchGrants = async () => {
@@ -189,7 +202,14 @@ function App() {
       {/* Main Area */}
       <main className="main-content">
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
+            <button 
+              onClick={toggleTheme}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
             <button 
               onClick={fetchGrants}
               className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-blue-900 transition-colors bg-transparent border-none cursor-pointer"
