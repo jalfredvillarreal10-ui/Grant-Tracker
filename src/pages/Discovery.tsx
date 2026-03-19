@@ -15,7 +15,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   
-  // Track which grants are already in your local SQLite DB
+  // Track which grants are already in local SQLite DB
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   // 1. Run a default search on load & track already saved grants
@@ -33,7 +33,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
     setError(null);
     
     try {
-      // Points to the powerful keyword endpoint in your main.py!
+      // Points to the keyword search endpoint in main.py which calls Grants.gov API
       const response = await fetch(`http://localhost:8000/api/grantsgov/keyword/${encodeURIComponent(keyword)}`);
       if (response.ok) {
         const data = await response.json();
@@ -54,22 +54,32 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
     runSearch(searchQuery);
   };
 
-  const handleSaveToPortfolio = async (grant: any) => {
-    if (savedIds.has(grant.grant_number)) return;
+  // Inside Discovery.tsx -> handleSaveToPortfolio
+const handleSaveToPortfolio = async (grant: any) => {
+  if (savedIds.has(grant.grant_number)) return;
 
-    try {
-      const response = await fetch('http://localhost:8000/api/grants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          grant_number: grant.grant_number,
-          title: grant.title,
-          agency: grant.agency,
-          deadline: grant.deadline || "2099-12-31",
-          status: "available", // Matches the default in your main.py
-          amount: 0
-        })
-      });
+  try {
+    const response = await fetch('http://localhost:8000/api/grants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_number: grant.grant_number,
+        title: grant.title,
+        agency: grant.agency,
+        deadline: grant.deadline || "2099-12-31",
+        // CHANGED: Setting this to 'applied' ensures it appears in 
+        // Lifecycle.tsx 'activeGrants' filter immediately.
+        status: "applied", 
+        application_status: "In Progress", //Adds detail to the lifecycle
+        amount: 0
+      })
+    });
+
+    if (response.ok) {
+      setSavedIds(prev => new Set(prev).add(grant.grant_number));
+      onGrantSaved(); // This triggers the App-level refresh
+    } 
+    // ... rest of your error handling
 
       if (response.ok) {
         setSavedIds(prev => new Set(prev).add(grant.grant_number));

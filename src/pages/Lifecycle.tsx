@@ -16,21 +16,13 @@ const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActiv
   const [selectedGrantForExit, setSelectedGrantForExit] = useState<Grant | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<Grant | null>(null);
 
-  const activeGrants = grants
-    .filter(g => g.status === 'applied')
-    .sort((a, b) => {
-      const dateA = a.deadline ? new Date(a.deadline).getTime() : 0;
-      const dateB = b.deadline ? new Date(b.deadline).getTime() : 0;
-      return dateA - dateB;
-    });
 
-  const unsuccessfulGrants = grants
-    .filter(g => g.status === 'denied' || g.status === 'withdrawn')
-    .sort((a, b) => {
-      const dateA = a.denialDate ? new Date(a.denialDate).getTime() : 0;
-      const dateB = b.denialDate ? new Date(b.denialDate).getTime() : 0;
-      return dateB - dateA; // Most recent first
-    });
+const activeGrants = grants
+  .filter(g => g.status === 'applied') 
+  .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+
+const unsuccessfulGrants = grants
+  .filter(g => g.status === 'denied' || g.status === 'withdrawn');
 
   const lostOpportunityValue = unsuccessfulGrants.reduce((acc, g) => acc + g.amount, 0);
 
