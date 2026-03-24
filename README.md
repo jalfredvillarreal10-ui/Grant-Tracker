@@ -60,18 +60,45 @@ To ensure the department never loses a funding stream due to administrative over
 - The Master Timeline: A dedicated page featuring a unified calendar view. This merges deadlines from all three pages (Application Deadlines, Decision Dates, and Expiration Dates) into one chronological master schedule.
 - Executive Export Module: A tool for generating PDF/CSV reports for City Council or Health Board meetings.
     * Content: Summary of total funding secured, a pipeline of pending funds ($), and a risk assessment of grants expiring in the next quarter.
-# 6. Technical Specifications (UI/UX)
+# 6. Exportable Individual Grant Reports
+To facilitate detailed external reporting and internal record-keeping, LHGP will include a robust export functionality for individual grants. This feature will be accessible from the detail view of any grant within the "Portfolio (Approved)" section.
+- Report Content: Each exportable report will comprehensively detail all pertinent information for a specific grant, including:
+    * Grant Title and Funder ID
+    * Full Grant Description (as entered in the system)
+    * Funding Source (Federal, State, or Private)
+    * Total Award Amount ($)
+    * Award Floor/Ceiling
+    * Submission Date
+    * Expected Decision/Notification Date (if applicable)
+    * Actual Award Date
+    * Expiration Date
+    * Spending Burn Rate (current percentage and raw figures)
+    * Compliance Category
+    * Assigned Program Manager
+    * Reporting Milestones and "Next Report Due" date
+    * Any linked documents or internal notes related to the grant.
+    * A breakdown of grant money, including initial allocation, current balance, and expenditure history, presented clearly.
+- Export Formats:
+    * Excel Sheet (XLSX/CSV): The primary export format will be an Excel spreadsheet, allowing for easy data manipulation, sorting, and integration with other financial tools. This will include all numerical and textual data in a structured, column-based format.
+    * PDF File: The Excel sheet, once generated, can be directly converted into a print-ready PDF file. This PDF version will be formatted to be easily shareable and presentable for official documentation, council meetings, or public records, ensuring a clean and professional appearance. The PDF will include headers, footers, and the City of Laredo branding.
+- Access Point: A dedicated "Export Grant Details" button will be prominent on each individual grant's detailed view page within the "Portfolio" module, triggering a pop-up with format options (Excel/PDF).
+- Security: All exported reports will adhere to the platform's security protocols, ensuring that only authorized users can generate and access these sensitive documents. The reports will include a timestamp of generation and the user who generated them for audit purposes.
+# 7. Technical Specifications (UI/UX)
 - City Branding: The interface utilizes the official City of Laredo color palette (Navy, White, and Gold accents) for a professional, institutional feel.
 - High-Value Highlighting: Any grant over $500,000 receives a "Premium Opportunity" visual badge across all pages.
 - Responsive Architecture: Fully optimized for desktop (office use) and tablets (on-site health inspections or meetings).
 - Data Integrity: Each page includes a "Refresh Data" trigger to pull the latest updates from the grant database.
-# 7. Technical Specification Addendum: The "Awarded" UX
+# 8. Technical Specification Addendum: The "Awarded" UX
 - Visual Urgency: Grants appearing in the "Approved" list that are within 30 days of expiration are pinned to the top of the list regardless of other filters, ensuring they are never missed.
 - The "Laredo Gold" Badge: Any awarded grant with a total value exceeding $500,000 features a persistent Gold Badge in the list view, signaling its status as a "Departmental Priority Asset."
 - Export Functionality: The Awarded list includes a "Quick Export" button to generate a Monthly Grant Status Report specifically for the Health Department Director.
-# 8. Roadmap Priorities
+# 9. Roadmap Priorities
 - Exporable Reports
 - Reminder System
+- Page/Link Primary Sort Objective Key UI Focus Dropdown/Filter Content
+- Available Reward Amount (High to Low) Prioritize ROI Financial Value & Eligibility Filter by Source (Federal/State/Private)
+- Applied Deadline (Soonest First) Monitor Pipeline Follow-up & Decision Dates Filter by Internal Lead (Staff Member)
+- Approved Expiration Date (Soonest First) Compliance & Renewal Urgency & Burn Rate Filter by Award Status (Active/Closed/Renewal)
   
 # Summary of Logic Rules for Developers
 | Page/Link | Primary Sort | Objective | Key UI Focus | Dropdown/Filter Content |
