@@ -69,7 +69,10 @@ To ensure the department never loses a funding stream due to administrative over
 - Visual Urgency: Grants appearing in the "Approved" list that are within 30 days of expiration are pinned to the top of the list regardless of other filters, ensuring they are never missed.
 - The "Laredo Gold" Badge: Any awarded grant with a total value exceeding $500,000 features a persistent Gold Badge in the list view, signaling its status as a "Departmental Priority Asset."
 - Export Functionality: The Awarded list includes a "Quick Export" button to generate a Monthly Grant Status Report specifically for the Health Department Director.
-
+# 8. Roadmap Priorities
+- Exporable Reports
+- Reminder System
+  
 # Summary of Logic Rules for Developers
 | Page/Link | Primary Sort | Objective | Key UI Focus | Dropdown/Filter Content |
 | --------- | ------------ | --------- | ------------ | ----------------------- |
