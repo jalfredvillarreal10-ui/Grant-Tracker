@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, AlertCircle, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Search, AlertCircle, PlusCircle, CheckCircle2, Filter } from 'lucide-react';
 import type { Grant } from '../types/grant';
-import GrantCard from '../components/GrantCard';
 
 interface DiscoveryProps {
   grants: Grant[];
-  onMoveToApplied: (id: string) => void;
-  onGrantSaved: () => void; // Trigger a refresh when saved
+  onMoveToApplied?: (id: string) => void;
+  onGrantSaved: () => void; 
 }
 
 const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
@@ -15,15 +14,14 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   
-  // Track which grants are already in local SQLite DB
+  // NEW: Agency Filter State
+  const [selectedAgency, setSelectedAgency] = useState<string>('All');
+  
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
-  // 1. Run a default search on load & track already saved grants
   useEffect(() => {
     runSearch("Texas"); 
-    
-    // Create a set of grant_numbers we already track so we don't save duplicates
-    const existingIds = new Set(grants.map(g => g.funderId));
+    const existingIds = new Set(grants.map(g => g.funderId || g.grant_number));
     setSavedIds(existingIds);
   }, [grants]);
 
@@ -31,9 +29,9 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
     if (!keyword) return;
     setIsSearching(true);
     setError(null);
+    setSelectedAgency('All'); // Reset the filter dropdown when a new search runs
     
     try {
-      // Points to the keyword search endpoint in main.py which calls Grants.gov API
       const response = await fetch(`http://localhost:8000/api/grantsgov/keyword/${encodeURIComponent(keyword)}`);
       if (response.ok) {
         const data = await response.json();
@@ -54,36 +52,26 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
     runSearch(searchQuery);
   };
 
-  // Inside Discovery.tsx -> handleSaveToPortfolio
-const handleSaveToPortfolio = async (grant: any) => {
-  if (savedIds.has(grant.grant_number)) return;
+  const handleSaveToPortfolio = async (grant: any) => {
+    if (savedIds.has(grant.grant_number)) return;
 
-  try {
-    const response = await fetch('http://localhost:8000/api/grants', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_number: grant.grant_number,
-        title: grant.title,
-        agency: grant.agency,
-        deadline: grant.deadline || "2099-12-31",
-        // CHANGED: Setting this to 'applied' ensures it appears in 
-        // Lifecycle.tsx 'activeGrants' filter immediately.
-        status: "applied", 
-        application_status: "In Progress", //Adds detail to the lifecycle
-        amount: 0
-      })
-    });
-
-    if (response.ok) {
-      setSavedIds(prev => new Set(prev).add(grant.grant_number));
-      onGrantSaved(); // This triggers the App-level refresh
-    } 
-    // ... rest of your error handling
+    try {
+      const response = await fetch('http://localhost:8000/api/grants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_number: grant.grant_number,
+          title: grant.title,
+          agency: grant.agency,
+          deadline: grant.deadline || "2099-12-31",
+          status: "available",
+          amount: 0
+        })
+      });
 
       if (response.ok) {
         setSavedIds(prev => new Set(prev).add(grant.grant_number));
-        onGrantSaved(); // Tells App.tsx to hit the database and refresh
+        onGrantSaved(); 
       } else {
         const errorData = await response.json();
         alert(`Error saving: ${errorData.detail}`);
@@ -93,7 +81,6 @@ const handleSaveToPortfolio = async (grant: any) => {
     }
   };
 
-  // Formats '2026-03-06' to 'Mar 6, 2026' to match Grants.gov
   const formatDate = (dateString: string) => {
     if (!dateString || dateString === '2099-12-31') return 'Rolling / Open';
     const date = new Date(dateString);
@@ -102,6 +89,14 @@ const handleSaveToPortfolio = async (grant: any) => {
     return correctedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // NEW: Automatically extract all unique agencies from the current search results
+  const uniqueAgencies = ['All', ...Array.from(new Set(searchResults.map(r => r.agency)))].sort();
+
+  // NEW: Filter the table rows based on the drop-down selection
+  const filteredResults = searchResults.filter(result => 
+    selectedAgency === 'All' || result.agency === selectedAgency
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <header>
@@ -109,14 +104,14 @@ const handleSaveToPortfolio = async (grant: any) => {
         <p className="text-zinc-500">Search the live federal database. Results are automatically sorted by urgent deadlines.</p>
       </header>
 
-      {/* --- SEARCH BAR --- */}
+      {/* --- SEARCH BAR & FILTERS --- */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-zinc-200">
         <form onSubmit={handleSearchSubmit} className="flex gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 w-5 h-5" />
             <input 
               type="text" 
-              placeholder="Search Grants.gov by keyword" 
+              placeholder="Search Grants.gov (e.g., 'infrastructure', 'education', 'Texas')..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full p-3 pl-12 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-blue-900 text-base"
@@ -126,6 +121,26 @@ const handleSaveToPortfolio = async (grant: any) => {
             {isSearching ? 'Searching...' : 'Search Grants'}
           </button>
         </form>
+
+        {/* --- AGENCY DROP-DOWN MENU --- */}
+        {searchResults.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-zinc-100 flex items-center gap-3">
+            <Filter className="w-4 h-4 text-zinc-400" />
+            <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Filter by Agency:</span>
+            <select 
+              value={selectedAgency}
+              onChange={(e) => setSelectedAgency(e.target.value)}
+              className="p-2 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-blue-900 text-sm font-medium text-zinc-700 flex-1 max-w-xl cursor-pointer hover:bg-zinc-100 transition-colors"
+            >
+              {uniqueAgencies.map(agency => (
+                <option key={agency} value={agency}>{agency}</option>
+              ))}
+            </select>
+            <span className="text-xs font-bold text-zinc-400 ml-auto">
+              Showing {filteredResults.length} of {searchResults.length}
+            </span>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 text-red-600 text-sm flex items-center gap-2 font-medium bg-red-50 p-3 rounded-lg">
@@ -148,12 +163,12 @@ const handleSaveToPortfolio = async (grant: any) => {
               </tr>
             </thead>
             <tbody>
-              {searchResults.length === 0 && !isSearching ? (
+              {filteredResults.length === 0 && !isSearching ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-zinc-500 font-medium">No active grants found. Try a broader keyword.</td>
+                  <td colSpan={5} className="p-8 text-center text-zinc-500 font-medium">No active grants found for this filter.</td>
                 </tr>
               ) : (
-                searchResults.map((result, idx) => {
+                filteredResults.map((result, idx) => {
                   const isSaved = savedIds.has(result.grant_number);
                   return (
                     <tr key={idx} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
@@ -168,10 +183,19 @@ const handleSaveToPortfolio = async (grant: any) => {
                       </td>
 
                       <td className="p-4 align-top">
-                        <div className="font-bold text-emerald-700 hover:underline cursor-pointer mb-1 text-base leading-tight">
+                        {/* HYPERLINK*/}
+                        <a 
+                          href={result.grants_gov_id 
+                            ? `https://www.grants.gov/search-results-detail/${result.grants_gov_id}` 
+                            : `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(result.grant_number)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold text-blue-700 hover:text-blue-900 hover:underline cursor-pointer mb-1 text-base leading-tight block"
+                          title="View Official Opportunity Details"
+                        >
                           {result.title}
-                        </div>
-                        <div className="text-xs text-zinc-500 font-medium">
+                        </a>
+                        <div className="text-xs text-zinc-500 font-medium mt-1">
                           <span className="font-bold text-zinc-700">Number:</span> {result.grant_number}
                         </div>
                       </td>

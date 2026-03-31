@@ -255,7 +255,8 @@ def search_grants_gov_keyword(keyword: str):
                     "title": hit.get("title") or hit.get("opportunityTitle") or "Title not found",
                     "agency": hit.get("agencyName") or hit.get("agency") or "Agency not found",
                     "deadline": formatted_date,
-                    "sort_date": sort_date 
+                    "sort_date": sort_date,
+                    "grants_gov_id": hit.get("id") 
                 })
         
         # Sorting engine
