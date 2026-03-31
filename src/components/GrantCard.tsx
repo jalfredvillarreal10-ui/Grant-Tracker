@@ -37,13 +37,6 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
   const burnRate = grant.amount > 0 ? ((grant.spentAmount || 0) / grant.amount) * 100 : 0;
 
-<<<<<<< HEAD
-=======
-  const cardStyle = isUnsuccessful 
-    ? { backgroundColor: 'var(--bg-unsuccessful)', borderLeft: '6px solid var(--border-unsuccessful)' } 
-    : { position: 'relative' as const, overflow: 'hidden' as const };
-
->>>>>>> 190bd97 (Feat: add light and dark mode toggle)
   return (
     <motion.div 
       layout
@@ -53,25 +46,10 @@ const GrantCard: React.FC<GrantCardProps> = ({
         isUnsuccessful ? 'bg-slate-50 border-l-8 border-l-slate-400' : 'bg-white hover:shadow-lg'
       }`}
     >
-<<<<<<< HEAD
       {/* 1. HEADER SECTION */}
       <div className="flex justify-between items-start gap-4">
         <div className="flex-1">
           <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 block mb-1">
-=======
-      {isPremium && !isUnsuccessful && (
-        <div 
-          className="badge-premium" 
-          style={{ position: 'absolute', top: '12px', right: '12px' }}
-        >
-          {grant.status === 'approved' ? 'LAREDO GOLD PRIORITY' : 'PREMIUM OPPORTUNITY'}
-        </div>
-      )}
-
-      <div className="flex justify-between items-start pr-32">
-        <div className="flex flex-col gap-1">
-          <span className={`text-xs font-bold uppercase tracking-widest ${isUnsuccessful ? 'text-zinc-500' : 'text-zinc-400'}`}>
->>>>>>> 190bd97 (Feat: add light and dark mode toggle)
             {grant.funderId}
           </span>
           <h3 className={`text-xl font-extrabold leading-tight ${isUnsuccessful ? 'text-zinc-600' : 'text-blue-950'}`}>
@@ -160,15 +138,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
           <div className="text-[11px] leading-relaxed text-zinc-600 bg-white/50 p-3 rounded border border-dashed border-zinc-300">
             <strong className="text-zinc-800 uppercase text-[9px]">Decision Note:</strong> {grant.rejectionReason}
           </div>
-<<<<<<< HEAD
           <button onClick={() => onReActivate?.(grant.id)} className="w-full py-2.5 bg-[#C5B358] rounded-lg text-white text-[10px] font-black uppercase tracking-wider hover:brightness-110 shadow-md flex items-center justify-center gap-2">
-=======
-          <button 
-            onClick={() => onReActivate?.(grant.id)}
-            style={{ backgroundColor: 'var(--gold-accent)' }}
-            className="w-full py-2 rounded-lg text-white text-xs font-bold uppercase flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-          >
->>>>>>> 190bd97 (Feat: add light and dark mode toggle)
             <RefreshCw size={14} /> Re-Activate Opportunity
           </button>
         </div>
