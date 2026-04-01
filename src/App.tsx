@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw, Sun, Moon } from 'lucide-react'
+import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw, Sun, Moon, Trash2 } from 'lucide-react'
 import Login from './components/Login'
 import Discovery from './pages/Discovery'
 import Lifecycle from './pages/Lifecycle'
@@ -65,6 +65,7 @@ function App() {
           isExtended: !!g.is_extended,
           renewalStatus: g.renewal_status || 'None',
           funderPortalUrl: g.funder_portal_url,
+          grantsGovId: g.grants_gov_id,
         }));
         
         setGrants(mappedGrants);
@@ -106,6 +107,7 @@ function App() {
           is_extended: !!grant.isExtended,
           renewal_status: grant.renewalStatus || 'None',
           funder_portal_url: grant.funderPortalUrl,
+          grants_gov_id: grant.grantsGovId,
         })
       });
       if (response.ok) {
@@ -132,6 +134,27 @@ function App() {
   const handleLogout = () => {
     setIsAuthenticated(false)
     setUserEmail('')
+  }
+
+  const clearGrantData = async () => {
+    const confirmed = window.confirm('Clear all saved grant data from the local database? This cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      const response = await fetch('http://localhost:8000/api/grants', {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear grant data')
+      }
+
+      setGrants([])
+      await fetchGrants()
+    } catch (error) {
+      console.error('Failed to clear grant data:', error)
+      window.alert('Failed to clear grant data.')
+    }
   }
 
   const moveToApplied = async (id: string) => {
@@ -196,6 +219,7 @@ function App() {
         poc_name: grant.pocName,
         poc_email: grant.pocEmail,
         funder_portal_url: grant.funderPortalUrl,
+        grants_gov_id: grant.grantsGovId,
       })
     })
 
@@ -292,6 +316,13 @@ function App() {
             >
               <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /> 
               {isRefreshing ? 'Refreshing Data...' : 'Refresh Data'}
+            </button>
+            <button
+              onClick={clearGrantData}
+              className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-700 transition-colors bg-transparent border-none cursor-pointer"
+            >
+              <Trash2 size={14} />
+              Clear Grant Data
             </button>
           </div>
 

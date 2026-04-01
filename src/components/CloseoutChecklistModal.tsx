@@ -14,6 +14,9 @@ const CloseoutChecklistModal: React.FC<CloseoutChecklistModalProps> = ({ grant, 
   if (!grant) return null;
 
   const portalUrl =
+    grant.grantsGovId
+      ? `https://www.grants.gov/search-results-detail/${grant.grantsGovId}`
+      :
     grant.funderPortalUrl ||
     `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`;
 

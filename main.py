@@ -55,7 +55,8 @@ def init_db():
                 onboarding_date DATE,
                 is_extended BOOLEAN DEFAULT 0,
                 renewal_status TEXT DEFAULT 'None',
-                funder_portal_url TEXT
+                funder_portal_url TEXT,
+                grants_gov_id TEXT
             )
         ''')
         existing_columns = {row[1] for row in cursor.execute("PRAGMA table_info(grants)").fetchall()}
@@ -65,6 +66,8 @@ def init_db():
             cursor.execute("ALTER TABLE grants ADD COLUMN poc_email TEXT")
         if "funder_portal_url" not in existing_columns:
             cursor.execute("ALTER TABLE grants ADD COLUMN funder_portal_url TEXT")
+        if "grants_gov_id" not in existing_columns:
+            cursor.execute("ALTER TABLE grants ADD COLUMN grants_gov_id TEXT")
         conn.commit()
 
 # Run database initialization on startup when I get it working
@@ -107,6 +110,7 @@ class GrantBase(BaseModel):
     is_extended: bool = False
     renewal_status: str = "None"
     funder_portal_url: Optional[str] = None
+    grants_gov_id: Optional[str] = None
 
 class GrantResponse(GrantBase):
     id: int
@@ -121,6 +125,15 @@ def get_all_grants(conn: sqlite3.Connection = Depends(get_db_connection)):
     grants = cursor.fetchall()
     return [dict(grant) for grant in grants]
 
+
+@app.delete("/api/grants", response_model=dict)
+def delete_all_grants(conn: sqlite3.Connection = Depends(get_db_connection)):
+    """Delete all tracked grants from the database."""
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM grants')
+    conn.commit()
+    return {"message": "All grant data cleared successfully"}
+
 @app.post("/api/grants", response_model=dict)
 def create_grant(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_connection)):
     """Save a new grant to the database."""
@@ -131,16 +144,16 @@ def create_grant(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_con
                 grant_number, title, agency, deadline, amount, status, submission_date, expected_notification_date,
                 poc_name, poc_email, internal_lead, application_status, rejection_reason, feedback_summary,
                 denial_date, expiration_date, spent_amount, compliance_category, program_manager,
-                next_report_due, onboarding_date, is_extended, renewal_status, funder_portal_url
+                next_report_due, onboarding_date, is_extended, renewal_status, funder_portal_url, grants_gov_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status,
             grant.submission_date, grant.expected_notification_date, grant.poc_name, grant.poc_email,
             grant.internal_lead, grant.application_status, grant.rejection_reason, grant.feedback_summary,
             grant.denial_date, grant.expiration_date, grant.spent_amount, grant.compliance_category,
             grant.program_manager, grant.next_report_due, grant.onboarding_date, grant.is_extended,
-            grant.renewal_status, grant.funder_portal_url
+            grant.renewal_status, grant.funder_portal_url, grant.grants_gov_id
         ))
         conn.commit()
         return {"message": "Grant added successfully", "grant_number": grant.grant_number}
@@ -159,7 +172,7 @@ def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Dep
             feedback_summary = ?, denial_date = ?, expiration_date = ?, 
             spent_amount = ?, compliance_category = ?, program_manager = ?, 
             next_report_due = ?, onboarding_date = ?, is_extended = ?, 
-            renewal_status = ?, funder_portal_url = ?
+            renewal_status = ?, funder_portal_url = ?, grants_gov_id = ?
         WHERE id = ?
     ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status, 
           grant.submission_date, grant.expected_notification_date, 
@@ -167,7 +180,7 @@ def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Dep
           grant.feedback_summary, grant.denial_date, grant.expiration_date, 
           grant.spent_amount, grant.compliance_category, grant.program_manager, 
           grant.next_report_due, grant.onboarding_date, grant.is_extended, 
-          grant.renewal_status, grant.funder_portal_url, grant_id))
+          grant.renewal_status, grant.funder_portal_url, grant.grants_gov_id, grant_id))
     conn.commit()
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Grant not found.")
@@ -308,7 +321,12 @@ def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = 
                     "agency": hit.get("agencyName") or hit.get("agency") or "Agency not found",
                     "deadline": formatted_date,
                     "sort_date": sort_date,
-                    "grants_gov_id": hit.get("id") 
+                    "grants_gov_id": hit.get("id"),
+                    "funder_portal_url": (
+                        f"https://www.grants.gov/search-results-detail/{hit.get('id')}"
+                        if hit.get("id")
+                        else None
+                    ),
                 })
         
         # Sorting engine

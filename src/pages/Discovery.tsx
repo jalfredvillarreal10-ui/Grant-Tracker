@@ -133,6 +133,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
           amount: 0,
           submission_date: new Date().toISOString().split('T')[0],
           application_status: "Submitted",
+          grants_gov_id: grant.grants_gov_id,
+          funder_portal_url:
+            grant.funder_portal_url ||
+            (grant.grants_gov_id
+              ? `https://www.grants.gov/search-results-detail/${grant.grants_gov_id}`
+              : `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.grant_number)}`),
         })
       });
 

@@ -11,7 +11,6 @@ import {
   Hash,
   RefreshCw,
   Trophy,
-  User,
   XCircle,
 } from 'lucide-react';
 import type { Grant } from '../types/grant';
@@ -110,7 +109,6 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
   const isUnsuccessful = grant.status === 'denied' || grant.status === 'withdrawn';
   const isApproved = grant.status === 'approved';
-  const burnRate = grant.amount > 0 ? ((grant.spentAmount || 0) / grant.amount) * 100 : 0;
   const progressWidth =
     grant.applicationStatus === 'Submitted'
       ? '33%'
@@ -134,6 +132,12 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
   const primaryLabel = 'Issuing Agency';
   const secondaryLabel = 'Award Amount';
+  const grantUrl =
+    grant.grantsGovId
+      ? `https://www.grants.gov/search-results-detail/${grant.grantsGovId}`
+      : grant.funderPortalUrl ||
+    `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`;
+  const hasAwardAmount = grant.amount > 0;
 
   return (
     <motion.div
@@ -158,9 +162,18 @@ const GrantCard: React.FC<GrantCardProps> = ({
                 <Hash className="w-3 h-3" />
                 {grant.funderId}
               </div>
-              <h3 style={{ margin: 0, maxWidth: '30rem', fontSize: '1.7rem', fontWeight: 700, lineHeight: 1.08, color: '#003366' }}>
-                {grant.title}
-              </h3>
+              <a
+                href={grantUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View Official Opportunity Details"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', maxWidth: '30rem', textDecoration: 'none' }}
+              >
+                <h3 style={{ margin: 0, fontSize: '1.7rem', fontWeight: 700, lineHeight: 1.08, color: '#003366' }}>
+                  {grant.title}
+                </h3>
+                <ExternalLink className="h-4 w-4" style={{ color: '#003366', flexShrink: 0 }} />
+              </a>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
@@ -174,7 +187,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${hasAwardAmount ? 2 : 1}, minmax(0, 1fr))`, gap: '20px', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
               {detailIcon(<Building2 className="w-5 h-5 text-[#003366]" />)}
               <div>
@@ -185,15 +198,17 @@ const GrantCard: React.FC<GrantCardProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              {detailIcon(<Trophy className="w-5 h-5 text-[#003366]" />, true)}
-              <div>
-                <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
-                  {secondaryLabel}
-                </p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{formatCurrency(grant.amount)}</p>
+            {hasAwardAmount && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                {detailIcon(<Trophy className="w-5 h-5 text-[#003366]" />, true)}
+                <div>
+                  <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
+                    {secondaryLabel}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{formatCurrency(grant.amount)}</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div style={{ borderTop: '1px solid #e8eef6', paddingTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -258,21 +273,9 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
             {isApproved && (
               <>
-                <div style={{ borderRadius: '20px', border: '1px solid #bbf7d0', background: '#ecfdf5', padding: '16px' }}>
-                  <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'rgba(4,120,87,0.7)' }}>Spending Burn Rate</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#065f46' }}>{Math.round(burnRate)}% utilized</span>
-                  </div>
-                  <div style={{ height: '8px', overflow: 'hidden', borderRadius: '999px', background: '#d1fae5' }}>
-                    <div style={{ height: '100%', width: `${Math.min(burnRate, 100)}%`, background: '#059669', transition: 'width 700ms' }} />
-                  </div>
-                </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                   <InfoCard label="Expiration Date" value={grant.expirationDate || 'No expiration set'} icon={<CalendarClock className="h-4 w-4" />} tone="emerald" />
                   <InfoCard label="Funds Remaining" value={`${formatCurrency(grant.remainingAmount || 0)} remaining`} icon={<Trophy className="h-4 w-4" />} tone="emerald" />
-                  <InfoCard label="Compliance Category" value={grant.complianceCategory || 'Compliance category pending'} icon={<Building2 className="h-4 w-4" />} tone="emerald" />
-                  <InfoCard label="Program Manager" value={grant.programManager || 'Program manager pending'} icon={<User className="h-4 w-4" />} tone="emerald" />
                 </div>
 
                 <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
@@ -285,7 +288,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
                       </div>
                     </div>
                     <a
-                      href={grant.funderPortalUrl || `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`}
+                      href={grantUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#047857', textDecoration: 'none' }}
@@ -296,13 +299,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-                  <button
-                    onClick={() => onAction?.(grant.id, 'renew')}
-                    style={{ borderRadius: '14px', border: '1px solid #a7f3d0', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#047857', background: '#fff', cursor: 'pointer' }}
-                  >
-                    Initiate Renewal
-                  </button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '8px' }}>
                   <button
                     onClick={() => onAction?.(grant.id, 'close')}
                     style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
