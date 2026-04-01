@@ -1,6 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, ArrowRight, User, Mail, RefreshCw, Briefcase, FileText, ExternalLink } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
+  ChevronUp,
+  Clock,
+  ExternalLink,
+  Hash,
+  RefreshCw,
+  Trophy,
+  User,
+  XCircle,
+} from 'lucide-react';
 import type { Grant } from '../types/grant';
 
 interface GrantCardProps {
@@ -12,140 +25,330 @@ interface GrantCardProps {
   onShowFeedback?: (grant: Grant) => void;
 }
 
-const GrantCard: React.FC<GrantCardProps> = ({ 
-  grant, 
-  onMoveToApplied, 
-  onAction, 
-  onUpdateStatus,
-  onReActivate,
-  onShowFeedback
-}) => {
-  const isPremium = grant.amount >= 500000;
-  const isUnsuccessful = grant.status === 'denied' || grant.status === 'withdrawn';
+const badgeIcons: Record<string, React.ReactNode> = {
+  applied: <Clock className="h-3.5 w-3.5" />,
+  approved: <CheckCircle2 className="h-3.5 w-3.5" />,
+  denied: <XCircle className="h-3.5 w-3.5" />,
+  withdrawn: <XCircle className="h-3.5 w-3.5" />,
+  closed: <CheckCircle2 className="h-3.5 w-3.5" />,
+};
 
-  // Urgency logic
-  let urgencyLevel: 'none' | 'warning' | 'critical' = 'none';
-  let daysRemaining = 0;
-  if (grant.expirationDate) {
-    const expDate = new Date(grant.expirationDate);
-    const today = new Date();
-    const diffTime = expDate.getTime() - today.getTime();
-    daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (daysRemaining <= 1) urgencyLevel = 'critical';
-    else if (daysRemaining <= 30) urgencyLevel = 'warning';
-  }
+function formatCurrency(amount: number) {
+  return `$${amount.toLocaleString()}`;
+}
 
-  const burnRate = grant.amount > 0 ? ((grant.spentAmount || 0) / grant.amount) * 100 : 0;
+function detailIcon(icon: React.ReactNode, strong = false) {
+  return (
+    <div
+      style={{
+        borderRadius: '16px',
+        padding: '12px',
+        background: strong ? '#FFD21F' : '#FFF7DA',
+        boxShadow: strong
+          ? '0 8px 18px rgba(255,210,31,0.32)'
+          : '0 6px 14px rgba(255,215,0,0.10)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {icon}
+    </div>
+  );
+}
+
+function InfoCard({
+  label,
+  value,
+  icon,
+  tone = 'navy',
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone?: 'navy' | 'emerald' | 'slate';
+}) {
+  const iconTone = tone === 'emerald' ? '#047857' : tone === 'slate' ? '#64748b' : '#002d62';
 
   return (
-    <motion.div 
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`relative rounded-xl shadow-md p-6 flex flex-col gap-5 border border-zinc-200 transition-all ${
-        isUnsuccessful ? 'bg-slate-50 border-l-8 border-l-slate-400' : 'bg-white hover:shadow-lg'
-      }`}
+    <div
+      style={{
+        borderRadius: '16px',
+        border: '1px solid #d9e2ef',
+        background: '#f8fafc',
+        padding: '12px 14px',
+      }}
     >
-      {/* 1. HEADER SECTION */}
-      <div className="flex justify-between items-start gap-4">
-        <div className="flex-1">
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400 block mb-1">
-            {grant.funderId}
-          </span>
-          <h3 className={`text-xl font-extrabold leading-tight ${isUnsuccessful ? 'text-zinc-600' : 'text-blue-950'}`}>
-            {grant.title}
-          </h3>
-        </div>
-        
-        {/* Badges and Status Tags */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          {isPremium && !isUnsuccessful && (
-            <div className={`px-3 py-1 rounded text-[10px] font-bold border ${
-              grant.status === 'approved' 
-                ? 'bg-amber-100 text-amber-800 border-amber-300' 
-                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-            }`}>
-              {grant.status === 'approved' ? '👑 LAREDO GOLD PRIORITY' : 'PREMIUM OPPORTUNITY'}
+      <p
+        style={{
+          margin: '0 0 6px 0',
+          fontSize: '10px',
+          fontWeight: 900,
+          textTransform: 'uppercase',
+          letterSpacing: '0.16em',
+          color: '#94a3b8',
+        }}
+      >
+        {label}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+        <span style={{ color: iconTone, display: 'flex' }}>{icon}</span>
+        <span>{value}</span>
+      </div>
+    </div>
+  );
+}
+
+const GrantCard: React.FC<GrantCardProps> = ({
+  grant,
+  onAction,
+  onUpdateStatus,
+  onReActivate,
+  onShowFeedback,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const isUnsuccessful = grant.status === 'denied' || grant.status === 'withdrawn';
+  const isApproved = grant.status === 'approved';
+  const burnRate = grant.amount > 0 ? ((grant.spentAmount || 0) / grant.amount) * 100 : 0;
+  const progressWidth =
+    grant.applicationStatus === 'Submitted'
+      ? '33%'
+      : grant.applicationStatus === 'Under Review'
+        ? '66%'
+        : '100%';
+
+  const subtitle =
+    grant.status === 'applied'
+      ? 'AWAITING REVIEW'
+      : grant.status === 'approved'
+        ? 'FUNDS ALLOCATED'
+        : grant.status === 'withdrawn'
+          ? 'OPPORTUNITY CLOSED'
+          : 'DECISION LOGGED';
+
+  const footerDate =
+    grant.status === 'approved'
+      ? grant.expirationDate || 'TBD'
+      : grant.deadline || grant.expectedNotificationDate || 'Pending';
+
+  const primaryLabel = 'Issuing Agency';
+  const secondaryLabel = 'Award Amount';
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        background: '#fff',
+        borderTop: '1px solid #d9e2ef',
+        borderRight: '1px solid #d9e2ef',
+        borderBottom: '1px solid #d9e2ef',
+        borderLeft: `8px solid ${isUnsuccessful ? '#94a3b8' : isApproved ? '#0f8f5b' : '#003366'}`,
+        borderRadius: '22px',
+        overflow: 'hidden',
+        boxShadow: '0 10px 24px rgba(15,23,42,0.07)',
+      }}
+    >
+      <div style={{ padding: '20px 22px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#5a7396', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+                <Hash className="w-3 h-3" />
+                {grant.funderId}
+              </div>
+              <h3 style={{ margin: 0, maxWidth: '30rem', fontSize: '1.7rem', fontWeight: 700, lineHeight: 1.08, color: '#003366' }}>
+                {grant.title}
+              </h3>
             </div>
-          )}
-          {isUnsuccessful && (
-            <div className="flex items-center gap-2">
-               <span className="text-[10px] font-black uppercase bg-zinc-200 text-zinc-600 px-2 py-1 rounded">
-                {grant.status}
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderRadius: '999px', border: `1px solid ${grant.status === 'approved' ? '#7BE0AC' : '#F2C14E'}`, background: grant.status === 'approved' ? '#DDFBEA' : '#FFF4CC', color: grant.status === 'approved' ? '#0C8C52' : '#B46900', fontSize: '14px', fontWeight: 700, boxShadow: grant.status === 'approved' ? '0 4px 12px rgba(16,185,129,0.18)' : '0 4px 12px rgba(242,193,78,0.28)' }}>
+                {badgeIcons[grant.status] ?? badgeIcons.applied}
+                {grant.status === 'applied' ? 'PENDING' : grant.status === 'approved' ? 'APPROVED' : grant.status.toUpperCase()}
+              </div>
+              <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: isApproved ? '#11A861' : '#667A98' }}>
+                {subtitle}
               </span>
-              <button onClick={() => onShowFeedback?.(grant)} className="p-1.5 bg-zinc-200 text-zinc-600 rounded-full hover:bg-zinc-300">
-                <Mail size={12} />
-              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              {detailIcon(<Building2 className="w-5 h-5 text-[#003366]" />)}
+              <div>
+                <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
+                  {primaryLabel}
+                </p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#243F66', lineHeight: 1.35 }}>{grant.source}</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              {detailIcon(<Trophy className="w-5 h-5 text-[#003366]" />, true)}
+              <div>
+                <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
+                  {secondaryLabel}
+                </p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{formatCurrency(grant.amount)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #e8eef6', paddingTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock className="w-4 h-4 text-[#003366]" />
+              <span style={{ fontSize: '14px', fontWeight: 700, color: '#516E95' }}>
+                {isApproved ? `EXPIRATION: ${footerDate}` : `DEADLINE: ${footerDate}`}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsExpanded(prev => !prev)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', border: 'none', background: 'transparent', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#003366', cursor: 'pointer' }}
+            >
+              View Details
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {isExpanded && (
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e8eef6', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {grant.status === 'applied' && (
+              <>
+                <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
+                  <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>Status Tracking</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#002d62' }}>{grant.applicationStatus || 'Submitted'}</span>
+                  </div>
+                  <div style={{ height: '8px', overflow: 'hidden', borderRadius: '999px', background: '#dbe3ee' }}>
+                    <div style={{ height: '100%', width: progressWidth, background: '#002d62', transition: 'width 700ms' }} />
+                  </div>
+                  <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8' }}>
+                    <span>Submitted</span>
+                    <span style={{ textAlign: 'center' }}>Under Review</span>
+                    <span style={{ textAlign: 'right' }}>Interview</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+                  <button
+                    onClick={() => onUpdateStatus?.(grant.id, 'denied')}
+                    style={{ borderRadius: '14px', border: '1px solid #fecdd3', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#e11d48', background: '#fff', cursor: 'pointer' }}
+                  >
+                    Mark Denied
+                  </button>
+                  <button
+                    onClick={() => onUpdateStatus?.(grant.id, 'withdrawn')}
+                    style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                  >
+                    Withdraw
+                  </button>
+                  <button
+                    onClick={() => onUpdateStatus?.(grant.id, 'approved')}
+                    style={{ borderRadius: '14px', border: 'none', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#fff', background: '#047857', cursor: 'pointer' }}
+                  >
+                    Approve
+                  </button>
+                </div>
+              </>
+            )}
+
+            {isApproved && (
+              <>
+                <div style={{ borderRadius: '20px', border: '1px solid #bbf7d0', background: '#ecfdf5', padding: '16px' }}>
+                  <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'rgba(4,120,87,0.7)' }}>Spending Burn Rate</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#065f46' }}>{Math.round(burnRate)}% utilized</span>
+                  </div>
+                  <div style={{ height: '8px', overflow: 'hidden', borderRadius: '999px', background: '#d1fae5' }}>
+                    <div style={{ height: '100%', width: `${Math.min(burnRate, 100)}%`, background: '#059669', transition: 'width 700ms' }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                  <InfoCard label="Expiration Date" value={grant.expirationDate || 'No expiration set'} icon={<CalendarClock className="h-4 w-4" />} tone="emerald" />
+                  <InfoCard label="Funds Remaining" value={`${formatCurrency(grant.remainingAmount || 0)} remaining`} icon={<Trophy className="h-4 w-4" />} tone="emerald" />
+                  <InfoCard label="Compliance Category" value={grant.complianceCategory || 'Compliance category pending'} icon={<Building2 className="h-4 w-4" />} tone="emerald" />
+                  <InfoCard label="Program Manager" value={grant.programManager || 'Program manager pending'} icon={<User className="h-4 w-4" />} tone="emerald" />
+                </div>
+
+                <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <div>
+                      <p style={{ margin: '0 0 6px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>Reporting Milestone</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                        <CalendarClock className="h-4 w-4 text-emerald-700" />
+                        <span>Next Report Due: {grant.nextReportDue || 'Not scheduled'}</span>
+                      </div>
+                    </div>
+                    <a
+                      href={grant.funderPortalUrl || `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#047857', textDecoration: 'none' }}
+                    >
+                      Open Portal
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+                  <button
+                    onClick={() => onAction?.(grant.id, 'renew')}
+                    style={{ borderRadius: '14px', border: '1px solid #a7f3d0', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#047857', background: '#fff', cursor: 'pointer' }}
+                  >
+                    Initiate Renewal
+                  </button>
+                  <button
+                    onClick={() => onAction?.(grant.id, 'close')}
+                    style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                  >
+                    Closeout Checklist
+                  </button>
+                </div>
+              </>
+            )}
+
+            {isUnsuccessful && (
+              <>
+                <div style={{ borderRadius: '20px', border: '1px dashed #cbd5e1', background: '#f8fafc', padding: '16px', fontSize: '14px', lineHeight: 1.6, color: '#475569' }}>
+                  <strong style={{ marginRight: '4px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.18em', color: '#64748b' }}>Decision Note</strong>
+                  {grant.rejectionReason || 'No decision note recorded.'}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+                  <button
+                    onClick={() => onShowFeedback?.(grant)}
+                    style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                  >
+                    View Feedback
+                  </button>
+                  <button
+                    onClick={() => onReActivate?.(grant.id)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '14px', border: 'none', padding: '12px 14px', fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#fff', background: '#C5B358', cursor: 'pointer' }}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Re-Activate Opportunity
+                  </button>
+                </div>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#002d62', cursor: 'pointer', width: 'fit-content' }}
+            >
+              Hide Details
+              <ChevronUp className="h-4 w-4" />
+            </button>
             </div>
           )}
-        </div>
       </div>
-
-      {/* 2. METADATA GRID */}
-      <div className={`grid grid-cols-2 gap-4 py-3 border-y ${isUnsuccessful ? 'border-zinc-200' : 'border-zinc-100'}`}>
-        <div>
-          <span className="text-[10px] text-zinc-400 uppercase font-bold block">Total Award: </span>
-          <span className={`text-lg font-black ${isUnsuccessful ? 'text-zinc-500' : 'text-zinc-900'}`}>
-            ${grant.amount.toLocaleString()}
-          </span>
-        </div>
-        <div>
-          <span className="text-[10px] text-zinc-400 uppercase font-bold block">Source: </span>
-          <span className={`text-sm font-semibold truncate block ${isUnsuccessful ? 'text-zinc-500' : 'text-zinc-700'}`}>
-            {grant.source}
-          </span>
-        </div>
-      </div>
-
-      {/* 3. STATUS SPECIFIC CONTENT */}
-      {grant.status === 'applied' && (
-        <div className="flex flex-col gap-4">
-          <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase">Current Status: <span className="text-blue-900">{grant.applicationStatus}</span></span>
-              
-            </div>
-            <div className="w-full bg-zinc-200 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-blue-900 h-full transition-all duration-700" 
-                style={{ width: grant.applicationStatus === 'Submitted' ? '33%' : grant.applicationStatus === 'Under Review' ? '66%' : '100%' }} 
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-zinc-600">
-            <div className="flex items-center gap-2"><User size={14} className="text-zinc-400"/> {grant.internalLead}</div>
-            <div className="flex items-center gap-2"><Clock size={14} className="text-zinc-400"/> Decision: {grant.expectedNotificationDate}</div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button onClick={() => onUpdateStatus?.(grant.id, 'denied')} className="flex-1 text-[10px] font-bold uppercase py-2.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 shadow-sm transition-all">
-              Mark Denied
-            </button>
-            <button onClick={() => onUpdateStatus?.(grant.id, 'withdrawn')} className="flex-1 text-[10px] font-bold uppercase py-2.5 border border-zinc-300 text-zinc-600 rounded-lg hover:bg-zinc-100 shadow-sm transition-all">
-              Withdraw
-            </button>
-            <button onClick={() => onUpdateStatus?.(grant.id, 'approved')} className="flex-1 text-[10px] font-bold uppercase py-2.5 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 shadow-sm transition-all">
-              Approve
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 4. UNSUCCESSFUL REASON */}
-      {isUnsuccessful && (
-        <div className="flex flex-col gap-3">
-          <div className="text-[11px] leading-relaxed text-zinc-600 bg-white/50 p-3 rounded border border-dashed border-zinc-300">
-            <strong className="text-zinc-800 uppercase text-[9px]">Decision Note:</strong> {grant.rejectionReason}
-          </div>
-          <button onClick={() => onReActivate?.(grant.id)} className="w-full py-2.5 bg-[#C5B358] rounded-lg text-white text-[10px] font-black uppercase tracking-wider hover:brightness-110 shadow-md flex items-center justify-center gap-2">
-            <RefreshCw size={14} /> Re-Activate Opportunity
-          </button>
-        </div>
-      )}
-
-      {/* (Other statuses like 'available' and 'approved' would follow similar logic...) */}
-      
     </motion.div>
   );
 };

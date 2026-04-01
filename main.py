@@ -40,6 +40,8 @@ def init_db():
                 status TEXT DEFAULT 'available',
                 submission_date DATE,
                 expected_notification_date DATE,
+                poc_name TEXT,
+                poc_email TEXT,
                 internal_lead TEXT,
                 application_status TEXT,
                 rejection_reason TEXT,
@@ -52,9 +54,17 @@ def init_db():
                 next_report_due DATE,
                 onboarding_date DATE,
                 is_extended BOOLEAN DEFAULT 0,
-                renewal_status TEXT DEFAULT 'None'
+                renewal_status TEXT DEFAULT 'None',
+                funder_portal_url TEXT
             )
         ''')
+        existing_columns = {row[1] for row in cursor.execute("PRAGMA table_info(grants)").fetchall()}
+        if "poc_name" not in existing_columns:
+            cursor.execute("ALTER TABLE grants ADD COLUMN poc_name TEXT")
+        if "poc_email" not in existing_columns:
+            cursor.execute("ALTER TABLE grants ADD COLUMN poc_email TEXT")
+        if "funder_portal_url" not in existing_columns:
+            cursor.execute("ALTER TABLE grants ADD COLUMN funder_portal_url TEXT")
         conn.commit()
 
 # Run database initialization on startup when I get it working
@@ -81,6 +91,8 @@ class GrantBase(BaseModel):
     status: str = "available"
     submission_date: Optional[str] = None
     expected_notification_date: Optional[str] = None
+    poc_name: Optional[str] = None
+    poc_email: Optional[str] = None
     internal_lead: Optional[str] = None
     application_status: Optional[str] = None
     rejection_reason: Optional[str] = None
@@ -94,6 +106,7 @@ class GrantBase(BaseModel):
     onboarding_date: Optional[str] = None
     is_extended: bool = False
     renewal_status: str = "None"
+    funder_portal_url: Optional[str] = None
 
 class GrantResponse(GrantBase):
     id: int
@@ -114,9 +127,21 @@ def create_grant(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_con
     try:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO grants (grant_number, title, agency, deadline, amount, status, expiration_date, onboarding_date, compliance_category, program_manager)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status, grant.expiration_date, grant.onboarding_date, grant.compliance_category, grant.program_manager))
+            INSERT INTO grants (
+                grant_number, title, agency, deadline, amount, status, submission_date, expected_notification_date,
+                poc_name, poc_email, internal_lead, application_status, rejection_reason, feedback_summary,
+                denial_date, expiration_date, spent_amount, compliance_category, program_manager,
+                next_report_due, onboarding_date, is_extended, renewal_status, funder_portal_url
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status,
+            grant.submission_date, grant.expected_notification_date, grant.poc_name, grant.poc_email,
+            grant.internal_lead, grant.application_status, grant.rejection_reason, grant.feedback_summary,
+            grant.denial_date, grant.expiration_date, grant.spent_amount, grant.compliance_category,
+            grant.program_manager, grant.next_report_due, grant.onboarding_date, grant.is_extended,
+            grant.renewal_status, grant.funder_portal_url
+        ))
         conn.commit()
         return {"message": "Grant added successfully", "grant_number": grant.grant_number}
     except sqlite3.IntegrityError:
@@ -130,19 +155,19 @@ def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Dep
         UPDATE grants 
         SET grant_number = ?, title = ?, agency = ?, deadline = ?, amount = ?, status = ?, 
             submission_date = ?, expected_notification_date = ?, 
-            internal_lead = ?, application_status = ?, rejection_reason = ?, 
+            poc_name = ?, poc_email = ?, internal_lead = ?, application_status = ?, rejection_reason = ?, 
             feedback_summary = ?, denial_date = ?, expiration_date = ?, 
             spent_amount = ?, compliance_category = ?, program_manager = ?, 
             next_report_due = ?, onboarding_date = ?, is_extended = ?, 
-            renewal_status = ?
+            renewal_status = ?, funder_portal_url = ?
         WHERE id = ?
     ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status, 
           grant.submission_date, grant.expected_notification_date, 
-          grant.internal_lead, grant.application_status, grant.rejection_reason, 
+          grant.poc_name, grant.poc_email, grant.internal_lead, grant.application_status, grant.rejection_reason, 
           grant.feedback_summary, grant.denial_date, grant.expiration_date, 
           grant.spent_amount, grant.compliance_category, grant.program_manager, 
           grant.next_report_due, grant.onboarding_date, grant.is_extended, 
-          grant.renewal_status, grant_id))
+          grant.renewal_status, grant.funder_portal_url, grant_id))
     conn.commit()
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Grant not found.")

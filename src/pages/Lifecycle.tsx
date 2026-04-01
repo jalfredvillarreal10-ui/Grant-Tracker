@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, AlertCircle, Info, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Grant, GrantStatus } from '../types/grant';
 import GrantCard from '../components/GrantCard';
@@ -19,12 +19,10 @@ const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActiv
 
 const activeGrants = grants
   .filter(g => g.status === 'applied') 
-  .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+  .sort((a, b) => new Date(a.deadline ?? '9999-12-31').getTime() - new Date(b.deadline ?? '9999-12-31').getTime());
 
-const unsuccessfulGrants = grants
-  .filter(g => g.status === 'denied' || g.status === 'withdrawn');
-
-  const lostOpportunityValue = unsuccessfulGrants.reduce((acc, g) => acc + g.amount, 0);
+const archivedGrants = grants
+  .filter(g => g.status === 'closed' || g.status === 'denied' || g.status === 'withdrawn');
 
   const handleUpdateStatus = (id: string, status: GrantStatus) => {
     if (status === 'denied' || status === 'withdrawn') {
@@ -45,13 +43,13 @@ const unsuccessfulGrants = grants
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-12">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '3rem' }}>
       <header>
         <h1 className="text-3xl font-bold text-blue-900">Application Lifecycle</h1>
         <p className="text-zinc-500">Monitoring submitted applications and pending decisions.</p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2rem' }}>
+      <div style={{ width: '100%', maxWidth: '52rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
         {activeGrants.map(grant => (
           <GrantCard 
             key={grant.id} 
@@ -68,16 +66,39 @@ const unsuccessfulGrants = grants
       )}
 
       {/* --- ARCHIVE SECTION --- */}
-      <div className="mt-8">
+      <div style={{ marginTop: '2rem' }}>
         <button 
           onClick={() => setIsArchiveOpen(!isArchiveOpen)}
-          className="w-full flex items-center justify-between p-4 bg-[#002147] text-white rounded-xl shadow-md hover:bg-[#002d62] transition-colors"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: '20px',
+            border: '1px solid #d9e2ef',
+            background: '#fff',
+            padding: '16px 18px',
+            boxShadow: '0 8px 18px rgba(15,23,42,0.05)',
+            cursor: 'pointer',
+          }}
         >
-          <div className="flex items-center gap-3">
-            <span className="font-bold">Closed/Unsuccessful Applications</span>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{unsuccessfulGrants.length} Records</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', width: '40px', height: '40px', alignItems: 'center', justifyContent: 'center', borderRadius: '14px', background: '#f3f6fb', color: '#002d62', flexShrink: 0 }}>
+              <Info size={18} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <span style={{ fontWeight: 700, color: '#002d62' }}>Closed/Unsuccessful Applications</span>
+              
+            </div>
           </div>
-          {isArchiveOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ borderRadius: '999px', border: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 12px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#64748b' }}>
+              {archivedGrants.length} Records
+            </span>
+            <span style={{ color: '#64748b', display: 'flex' }}>
+              {isArchiveOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </span>
+          </div>
         </button>
 
         <AnimatePresence>
@@ -88,19 +109,9 @@ const unsuccessfulGrants = grants
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="pt-6 flex flex-col gap-6">
-                <div className="flex justify-between items-center px-2">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-tighter">Total Lost Opportunity Value (FY26)</span>
-                    <span className="text-2xl font-black text-zinc-600">${lostOpportunityValue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-3 bg-zinc-100 rounded-lg text-zinc-500 text-xs font-medium">
-                    <Info size={14} /> Records are maintained for labor accountability and trend identification.
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2rem' }}>
-                  {unsuccessfulGrants.map(grant => (
+              <div style={{ paddingTop: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ width: '100%', maxWidth: '52rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                  {archivedGrants.map(grant => (
                     <GrantCard 
                       key={grant.id} 
                       grant={grant}
@@ -110,9 +121,10 @@ const unsuccessfulGrants = grants
                   ))}
                 </div>
 
-                {unsuccessfulGrants.length === 0 && (
-                  <div className="p-8 text-center text-zinc-400 bg-zinc-50 rounded-xl border border-zinc-100">
-                    No historical records found.
+                {archivedGrants.length === 0 && (
+                  <div style={{ borderRadius: '20px', border: '1px dashed #cbd5e1', background: '#fff', padding: '32px', textAlign: 'center', boxShadow: '0 8px 18px rgba(15,23,42,0.05)' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 700, color: '#002d62' }}>No archived applications yet.</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Closed, denied, and withdrawn records will appear here automatically.</p>
                   </div>
                 )}
               </div>

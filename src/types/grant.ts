@@ -38,4 +38,5 @@ export interface Grant {
   nextReportDue?: string;
   onboardingDate?: string; // To track "Recently Awarded" (90 days)
   isExtended?: boolean;
+  funderPortalUrl?: string;
 }

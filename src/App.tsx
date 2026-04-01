@@ -48,6 +48,8 @@ function App() {
           deadline: g.deadline,
           submissionDate: g.submission_date,
           expectedNotificationDate: g.expected_notification_date,
+          pocName: g.poc_name,
+          pocEmail: g.poc_email,
           internalLead: g.internal_lead,
           applicationStatus: g.application_status,
           rejectionReason: g.rejection_reason,
@@ -61,7 +63,8 @@ function App() {
           nextReportDue: g.next_report_due,
           onboardingDate: g.onboarding_date,
           isExtended: !!g.is_extended,
-          renewalStatus: g.renewal_status || 'None'
+          renewalStatus: g.renewal_status || 'None',
+          funderPortalUrl: g.funder_portal_url,
         }));
         
         setGrants(mappedGrants);
@@ -87,11 +90,22 @@ function App() {
           status: grant.status,
           submission_date: grant.submissionDate,
           expected_notification_date: grant.expectedNotificationDate,
+          poc_name: grant.pocName,
+          poc_email: grant.pocEmail,
           internal_lead: grant.internalLead,
           application_status: grant.applicationStatus,
           rejection_reason: grant.rejectionReason,
           feedback_summary: grant.feedbackSummary,
-          denial_date: grant.denialDate
+          denial_date: grant.denialDate,
+          expiration_date: grant.expirationDate,
+          spent_amount: grant.spentAmount || 0,
+          compliance_category: grant.complianceCategory,
+          program_manager: grant.programManager,
+          next_report_due: grant.nextReportDue,
+          onboarding_date: grant.onboardingDate,
+          is_extended: !!grant.isExtended,
+          renewal_status: grant.renewalStatus || 'None',
+          funder_portal_url: grant.funderPortalUrl,
         })
       });
       if (response.ok) {
@@ -140,20 +154,82 @@ function App() {
       const updatedGrant: Grant = {
         ...grant,
         status,
+        applicationStatus: status === 'approved' ? undefined : grant.applicationStatus,
         rejectionReason,
         feedbackSummary,
-        denialDate: (status === 'denied' || status === 'withdrawn') ? new Date().toISOString().split('T')[0] : undefined
+        denialDate: (status === 'denied' || status === 'withdrawn') ? new Date().toISOString().split('T')[0] : undefined,
+        onboardingDate: status === 'approved' ? (grant.onboardingDate || new Date().toISOString().split('T')[0]) : grant.onboardingDate,
       };
       await saveGrantUpdate(updatedGrant);
     }
   }
 
-  const handleAction = (id: string, action: string) => {
+  const createRenewalGrant = async (grant: Grant) => {
+    const today = new Date().toISOString().split('T')[0]
+    const renewalGrantNumber = `${grant.funderId}-RENEWAL-${grant.id}-${new Date().getFullYear()}`
+
+    const response = await fetch('http://localhost:8000/api/grants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_number: renewalGrantNumber,
+        title: `${grant.title} Renewal Cycle`,
+        agency: grant.source,
+        deadline: grant.expirationDate || grant.deadline || '2099-12-31',
+        amount: grant.amount,
+        status: 'applied',
+        submission_date: today,
+        expected_notification_date: grant.expirationDate || null,
+        internal_lead: grant.internalLead,
+        application_status: 'Submitted',
+        rejection_reason: null,
+        feedback_summary: null,
+        denial_date: null,
+        expiration_date: null,
+        spent_amount: 0,
+        compliance_category: grant.complianceCategory,
+        program_manager: grant.programManager,
+        next_report_due: null,
+        onboarding_date: null,
+        is_extended: false,
+        renewal_status: 'None',
+        poc_name: grant.pocName,
+        poc_email: grant.pocEmail,
+        funder_portal_url: grant.funderPortalUrl,
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to create renewal record')
+    }
+  }
+
+  const handleAction = async (id: string, action: string) => {
+    const grant = grants.find(g => g.id === id)
+    if (!grant) return
+
     if (action === 'renew') {
-      setGrants(prev => prev.map(g => {
-        if (g.id === id) return { ...g, renewalStatus: 'Initiated' }
-        return g
-      }))
+      if (grant.renewalStatus === 'Initiated') {
+        setActivePage('lifecycle')
+        return
+      }
+      const updatedGrant: Grant = {
+        ...grant,
+        renewalStatus: 'Initiated',
+        isExtended: true,
+      }
+      await saveGrantUpdate(updatedGrant)
+      await createRenewalGrant(updatedGrant)
+      setActivePage('lifecycle')
+      return
+    }
+
+    if (action === 'close') {
+      await saveGrantUpdate({
+        ...grant,
+        status: 'closed',
+      })
+      return
     }
   }
 
@@ -219,7 +295,14 @@ function App() {
             </button>
           </div>
 
-          {activePage === 'discovery' && <Discovery grants={grants} onMoveToApplied={moveToApplied} onGrantSaved={fetchGrants} />}
+          {activePage === 'discovery' && (
+            <Discovery
+              grants={grants}
+              onMoveToApplied={moveToApplied}
+              onGrantSaved={fetchGrants}
+              onGrantTracked={() => setActivePage('lifecycle')}
+            />
+          )}
           {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'available')} />}
           {activePage === 'portfolio' && <Portfolio grants={grants} onAction={handleAction} />}
           {activePage === 'reporting' && <Reporting grants={grants} />}

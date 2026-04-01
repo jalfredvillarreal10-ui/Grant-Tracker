@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { Download, Filter, ChevronDown } from 'lucide-react';
 import type { Grant } from '../types/grant';
 import GrantCard from '../components/GrantCard';
+import CloseoutChecklistModal from '../components/CloseoutChecklistModal';
 
 interface PortfolioProps {
   grants: Grant[];
-  onAction: (id: string, action: string) => void;
+  onAction: (id: string, action: string) => Promise<void>;
 }
 
 type PortfolioFilter = 'active' | 'recent' | 'extension' | 'closed';
 
 const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
   const [filter, setFilter] = useState<PortfolioFilter>('active');
+  const [grantForCloseout, setGrantForCloseout] = useState<Grant | null>(null);
 
   const getFilteredGrants = () => {
     let filtered = grants.filter(g => {
@@ -101,12 +103,18 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '2rem' }}>
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         {filteredGrants.map(grant => (
           <GrantCard 
             key={grant.id} 
             grant={grant} 
-            onAction={onAction}
+            onAction={(id, action) => {
+              if (action === 'close') {
+                setGrantForCloseout(grant)
+                return
+              }
+              void onAction(id, action)
+            }}
           />
         ))}
       </div>
@@ -116,6 +124,16 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
           No records found for the selected filter.
         </div>
       )}
+
+      <CloseoutChecklistModal
+        grant={grantForCloseout}
+        isOpen={!!grantForCloseout}
+        onClose={() => setGrantForCloseout(null)}
+        onConfirm={async (grant) => {
+          await onAction(grant.id, 'close')
+          setGrantForCloseout(null)
+        }}
+      />
     </div>
   );
 };

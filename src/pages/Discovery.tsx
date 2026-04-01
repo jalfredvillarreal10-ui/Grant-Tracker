@@ -5,10 +5,11 @@ import type { Grant } from '../types/grant';
 interface DiscoveryProps {
   grants: Grant[];
   onMoveToApplied?: (id: string) => void;
-  onGrantSaved: () => void; 
+  onGrantSaved: () => Promise<void> | void;
+  onGrantTracked?: () => void;
 }
 
-const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
+const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTracked }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
 
   useEffect(() => {
     runSearch("Texas"); 
-    const existingIds = new Set(grants.map(g => g.funderId || g.grant_number));
+    const existingIds = new Set(grants.map(g => g.funderId));
     setSavedIds(existingIds);
   }, [grants]);
 
@@ -64,14 +65,17 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved }) => {
           title: grant.title,
           agency: grant.agency,
           deadline: grant.deadline || "2099-12-31",
-          status: "available",
-          amount: 0
+          status: "applied",
+          amount: 0,
+          submission_date: new Date().toISOString().split('T')[0],
+          application_status: "Submitted",
         })
       });
 
       if (response.ok) {
         setSavedIds(prev => new Set(prev).add(grant.grant_number));
-        onGrantSaved(); 
+        await onGrantSaved();
+        onGrantTracked?.();
       } else {
         const errorData = await response.json();
         alert(`Error saving: ${errorData.detail}`);
