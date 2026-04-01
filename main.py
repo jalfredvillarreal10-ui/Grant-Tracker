@@ -229,13 +229,42 @@ def fetch_from_grants_gov(opportunity_number: str):
 
 #SEARCH FUNCTION
 
-@app.get("/api/grantsgov/keyword/{keyword}")
-def search_grants_gov_keyword(keyword: str):
-    """Search Grants.gov by keyword and return a list of OPEN grants, sorted by soonest deadline."""
+def _normalize_grants_gov_date(raw_date_value) -> tuple[str, str]:
+    raw_date = str(raw_date_value or "").strip()
+    formatted_date = ""
+    sort_date = "9999-12-31"
+
+    if raw_date and raw_date != "None":
+        clean_date = raw_date.split("T")[0].split(" ")[0]
+        formats_to_try = [
+            "%m/%d/%Y", "%Y-%m-%d", "%b %d, %Y", "%B %d, %Y",
+            "%b %d %Y", "%m-%d-%Y", "%m%d%Y", "%Y%m%d", "%m/%d/%y"
+        ]
+        for fmt in formats_to_try:
+            try:
+                dt = datetime.strptime(clean_date, fmt)
+                formatted_date = dt.strftime("%Y-%m-%d")
+                sort_date = formatted_date
+                break
+            except ValueError:
+                continue
+
+    return formatted_date, sort_date
+
+
+def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = None, page: int = 1, page_size: int = 25):
+    """Search Grants.gov with optional filters and pagination."""
     url = "https://api.grants.gov/v1/api/search2"
-    
-    # Using 'keyword' instead of 'oppNum' to get multiple results
-    payload = {"keyword": keyword} 
+    payload = {
+        "oppStatuses": "posted",
+        "rows": page_size,
+        "startRecordNum": max(page - 1, 0) * page_size,
+    }
+    if keyword:
+        payload["keyword"] = keyword
+    if category and category != "All":
+        payload["fundingCategories"] = category
+
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Content-Type": "application/json"
@@ -248,32 +277,30 @@ def search_grants_gov_keyword(keyword: str):
             
         json_response = response.json()
         results = []
+        categories = []
+        total_results = 0
         
         if json_response.get("errorcode") == 0 and "oppHits" in json_response.get("data", {}):
-            for hit in json_response["data"]["oppHits"]:
+            data = json_response["data"]
+            total_results = int(data.get("hitCount") or 0)
+
+            for category_option in data.get("fundingCategories", []):
+                label = category_option.get("label")
+                value = category_option.get("value")
+                if label and value:
+                    categories.append({
+                        "label": label,
+                        "value": value,
+                        "count": category_option.get("count", 0),
+                    })
+
+            for hit in data["oppHits"]:
                 
                 # FILTER: We only want to see active, open grants we can apply for
                 if hit.get("oppStatus") != "posted":
                     continue
-                    
-                raw_date = str(hit.get("closeDate") or "").strip()
-                formatted_date = ""
-                sort_date = "9999-12-31" # Default to far future if no valid date is found
-                
-                if raw_date and raw_date != "None":
-                    clean_date = raw_date.split("T")[0].split(" ")[0]
-                    formats_to_try = [
-                        "%m/%d/%Y", "%Y-%m-%d", "%b %d, %Y", "%B %d, %Y", 
-                        "%b %d %Y", "%m-%d-%Y", "%m%d%Y", "%Y%m%d", "%m/%d/%y"
-                    ]
-                    for fmt in formats_to_try:
-                        try:
-                            dt = datetime.strptime(clean_date, fmt)
-                            formatted_date = dt.strftime("%Y-%m-%d")
-                            sort_date = formatted_date # Use the clean YYYY-MM-DD for sorting
-                            break
-                        except ValueError:
-                            continue
+
+                formatted_date, sort_date = _normalize_grants_gov_date(hit.get("closeDate"))
                 
                 results.append({
                     "grant_number": hit.get("number") or hit.get("oppNum") or "Unknown",
@@ -290,11 +317,42 @@ def search_grants_gov_keyword(keyword: str):
         # Clean up our temporary sorting key before sending to React
         for r in results:
             del r["sort_date"]
-            
-        return results
+
+        categories.sort(key=lambda option: option["label"])
+        total_pages = max((total_results + page_size - 1) // page_size, 1)
+
+        return {
+            "results": results,
+            "categories": categories,
+            "total_results": total_results,
+            "current_page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+
+@app.get("/api/grantsgov/opportunities")
+def search_grants_gov_opportunities(
+    keyword: Optional[str] = None,
+    category: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+):
+    """Search Grants.gov with optional keyword/category filters and paginated results."""
+    safe_page = max(page, 1)
+    safe_page_size = min(max(page_size, 1), 100)
+    return _search_grants_gov(keyword=keyword, category=category, page=safe_page, page_size=safe_page_size)
+
+
+@app.get("/api/grantsgov/keyword/{keyword}")
+def search_grants_gov_keyword(keyword: str, category: Optional[str] = None, page: int = 1, page_size: int = 25):
+    """Backward-compatible keyword search route."""
+    safe_page = max(page, 1)
+    safe_page_size = min(max(page_size, 1), 100)
+    return _search_grants_gov(keyword=keyword, category=category, page=safe_page, page_size=safe_page_size)
 
 
 

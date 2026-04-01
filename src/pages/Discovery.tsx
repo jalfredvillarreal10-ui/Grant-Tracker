@@ -9,40 +9,94 @@ interface DiscoveryProps {
   onGrantTracked?: () => void;
 }
 
+const PAGE_SIZE = 25;
+const DEFAULT_CATEGORY = 'HL';
+
+type CategoryOption = {
+  label: string;
+  value: string;
+  count: number;
+};
+
+type SearchResponse = {
+  results: any[];
+  categories: CategoryOption[];
+  total_results: number;
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTracked }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  
-  // NEW: Agency Filter State
-  const [selectedAgency, setSelectedAgency] = useState<string>('All');
-  
+  const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>(DEFAULT_CATEGORY);
+  const [activeKeyword, setActiveKeyword] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    runSearch("Texas"); 
+    runSearch({ keyword: '', category: DEFAULT_CATEGORY, page: 1 });
+  }, []);
+
+  useEffect(() => {
     const existingIds = new Set(grants.map(g => g.funderId));
     setSavedIds(existingIds);
   }, [grants]);
 
-  const runSearch = async (keyword: string) => {
-    if (!keyword) return;
+  const runSearch = async ({
+    keyword,
+    category = 'All',
+    page = 1,
+  }: {
+    keyword: string;
+    category?: string;
+    page?: number;
+  }) => {
     setIsSearching(true);
     setError(null);
-    setSelectedAgency('All'); // Reset the filter dropdown when a new search runs
     
     try {
-      const response = await fetch(`http://localhost:8000/api/grantsgov/keyword/${encodeURIComponent(keyword)}`);
+      const params = new URLSearchParams();
+      if (keyword.trim()) {
+        params.set('keyword', keyword.trim());
+      }
+      if (category !== 'All') {
+        params.set('category', category);
+      }
+      params.set('page', page.toString());
+      params.set('page_size', PAGE_SIZE.toString());
+
+      const response = await fetch(
+        `http://localhost:8000/api/grantsgov/opportunities?${params.toString()}`
+      );
       if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data);
+        const data: SearchResponse = await response.json();
+        setSearchResults(data.results || []);
+        setAvailableCategories(data.categories || []);
+        setTotalResults(data.total_results || 0);
+        setCurrentPage(data.current_page || 1);
+        setTotalPages(data.total_pages || 1);
+        setActiveKeyword(keyword.trim());
       } else {
         const errData = await response.json();
         setError(errData.detail || "Failed to fetch search results.");
+        setSearchResults([]);
+        setTotalResults(0);
+        setCurrentPage(1);
+        setTotalPages(1);
       }
     } catch (err) {
       setError("Failed to connect to backend server.");
+      setSearchResults([]);
+      setTotalResults(0);
+      setCurrentPage(1);
+      setTotalPages(1);
     } finally {
       setIsSearching(false);
     }
@@ -50,7 +104,17 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    runSearch(searchQuery);
+    runSearch({ keyword: searchQuery, category: selectedCategory, page: 1 });
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    runSearch({ keyword: activeKeyword || searchQuery, category, page: 1 });
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    runSearch({ keyword: activeKeyword, category: selectedCategory, page });
   };
 
   const handleSaveToPortfolio = async (grant: any) => {
@@ -93,13 +157,13 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     return correctedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  // NEW: Automatically extract all unique agencies from the current search results
-  const uniqueAgencies = ['All', ...Array.from(new Set(searchResults.map(r => r.agency)))].sort();
-
-  // NEW: Filter the table rows based on the drop-down selection
-  const filteredResults = searchResults.filter(result => 
-    selectedAgency === 'All' || result.agency === selectedAgency
-  );
+  const getVisiblePages = () => {
+    const windowSize = 5;
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + windowSize - 1);
+    const adjustedStart = Math.max(1, end - windowSize + 1);
+    return Array.from({ length: end - adjustedStart + 1 }, (_, index) => adjustedStart + index);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -115,7 +179,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 w-5 h-5" />
             <input 
               type="text" 
-              placeholder="Search Grants.gov (e.g., 'infrastructure', 'education', 'Texas')..." 
+              placeholder="Search Grants.gov or leave blank to browse all open grants..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full p-3 pl-12 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-blue-900 text-base"
@@ -126,22 +190,25 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
           </button>
         </form>
 
-        {/* --- AGENCY DROP-DOWN MENU --- */}
-        {searchResults.length > 0 && (
+        {/* --- CATEGORY DROP-DOWN MENU --- */}
+        {availableCategories.length > 0 && (
           <div className="mt-4 pt-4 border-t border-zinc-100 flex items-center gap-3">
             <Filter className="w-4 h-4 text-zinc-400" />
-            <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Filter by Agency:</span>
+            <span className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Filter by Category:</span>
             <select 
-              value={selectedAgency}
-              onChange={(e) => setSelectedAgency(e.target.value)}
+              value={selectedCategory}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className="p-2 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-blue-900 text-sm font-medium text-zinc-700 flex-1 max-w-xl cursor-pointer hover:bg-zinc-100 transition-colors"
             >
-              {uniqueAgencies.map(agency => (
-                <option key={agency} value={agency}>{agency}</option>
+              <option value="All">All</option>
+              {availableCategories.map(category => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
               ))}
             </select>
             <span className="text-xs font-bold text-zinc-400 ml-auto">
-              Showing {filteredResults.length} of {searchResults.length}
+              {totalResults.toLocaleString()} total results
             </span>
           </div>
         )}
@@ -167,12 +234,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
               </tr>
             </thead>
             <tbody>
-              {filteredResults.length === 0 && !isSearching ? (
+              {searchResults.length === 0 && !isSearching ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-zinc-500 font-medium">No active grants found for this filter.</td>
                 </tr>
               ) : (
-                filteredResults.map((result, idx) => {
+                searchResults.map((result, idx) => {
                   const isSaved = savedIds.has(result.grant_number);
                   return (
                     <tr key={idx} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
@@ -232,6 +299,47 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-4 border-t border-zinc-200 px-4 py-3 bg-zinc-50">
+            <div className="text-sm text-zinc-500 font-medium">
+              Page {currentPage} of {totalPages} • Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalResults)} of {totalResults.toLocaleString()}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || isSearching}
+                className="px-3 py-2 rounded-md border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              {getVisiblePages().map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => handlePageChange(page)}
+                  disabled={isSearching}
+                  className={`min-w-10 px-3 py-2 rounded-md text-sm font-semibold border ${
+                    page === currentPage
+                      ? 'bg-blue-900 border-blue-900 text-white'
+                      : 'bg-white border-zinc-300 text-zinc-700'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || isSearching}
+                className="px-3 py-2 rounded-md border border-zinc-300 bg-white text-sm font-semibold text-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
