@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import logo from '../assets/LHGP_logo.jpeg';
 
 interface LoginProps {
   onLogin: (email: string) => void;
@@ -166,6 +167,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             background: 'radial-gradient(circle, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0) 70%)',
             pointerEvents: 'none'
           }} />
+
+          {/* Centered Logo Container */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+            <div style={{
+              borderRadius: '1rem', // rounded-2xl
+              overflow: 'hidden',
+              border: '2px solid #C5B358',
+              boxShadow: '0px 8px 24px rgba(0,0,0,0.3)',
+              display: 'flex'
+            }}>
+              <img 
+                src={logo} 
+                alt="Laredo Public Health Logo" 
+                style={{ maxWidth: '300px', width: '100%', display: 'block' }} 
+              />
+            </div>
+          </div>
           
           <div style={{ position: 'relative', zIndex: 1 }}>
             <h2 style={{ fontSize: '1.75rem', color: 'white', fontWeight: 300, margin: '0 0 1rem 0' }}>
