@@ -16,7 +16,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
   const [grantForCloseout, setGrantForCloseout] = useState<Grant | null>(null);
 
   const getFilteredGrants = () => {
-    let filtered = grants.filter(g => {
+    const filtered = grants.filter(g => {
       if (filter === 'closed') return g.status === 'closed';
       if (g.status !== 'approved') return false;
       

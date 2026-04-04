@@ -7,15 +7,24 @@ interface ExitInterviewModalProps {
   grant: Grant;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (rejectionReason: any, feedbackSummary: string) => void;
+  onSubmit: (rejectionReason: NonNullable<Grant['rejectionReason']>, feedbackSummary: string) => void;
 }
 
 const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, onClose, onSubmit }) => {
-  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [rejectionReason, setRejectionReason] = useState<NonNullable<Grant['rejectionReason']> | ''>('');
   const [feedbackSummary, setFeedbackSummary] = useState('');
+
+  const rejectionReasons: NonNullable<Grant['rejectionReason']>[] = [
+    'Lack of Matching Funds',
+    'Eligibility Technicality',
+    'Funder Budget Cut',
+    'Proposal Score',
+    'Other',
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!rejectionReason) return;
     onSubmit(rejectionReason, feedbackSummary);
   };
 
@@ -47,15 +56,13 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
                 <select
                   required
                   value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
+                  onChange={(e) => setRejectionReason(e.target.value as NonNullable<Grant['rejectionReason']>)}
                   className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-[#002d62]"
                 >
                   <option value="" disabled>Select a reason...</option>
-                  <option value="Lack of Matching Funds">Lack of Matching Funds</option>
-                  <option value="Eligibility Technicality">Eligibility Technicality</option>
-                  <option value="Funder Budget Cut">Funder Budget Cut</option>
-                  <option value="Proposal Score">Proposal Score</option>
-                  <option value="Other">Other</option>
+                  {rejectionReasons.map((reason) => (
+                    <option key={reason} value={reason}>{reason}</option>
+                  ))}
                 </select>
               </div>
 

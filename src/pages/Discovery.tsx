@@ -18,8 +18,18 @@ type CategoryOption = {
   count: number;
 };
 
+type SearchResult = {
+  grant_number: string;
+  title: string;
+  agency: string;
+  deadline: string;
+  discovery_status: 'open' | 'upcoming' | 'other';
+  grants_gov_id?: string;
+  funder_portal_url?: string;
+};
+
 type SearchResponse = {
-  results: any[];
+  results: SearchResult[];
   categories: CategoryOption[];
   total_results: number;
   current_page: number;
@@ -31,7 +41,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>(DEFAULT_CATEGORY);
   const [activeKeyword, setActiveKeyword] = useState('');
@@ -91,7 +101,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
         setCurrentPage(1);
         setTotalPages(1);
       }
-    } catch (err) {
+    } catch {
       setError("Failed to connect to backend server.");
       setSearchResults([]);
       setTotalResults(0);
@@ -117,7 +127,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     runSearch({ keyword: activeKeyword, category: selectedCategory, page });
   };
 
-  const handleSaveToPortfolio = async (grant: any) => {
+  const handleSaveToPortfolio = async (grant: SearchResult) => {
     if (savedIds.has(grant.grant_number)) return;
 
     try {
@@ -150,7 +160,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
         const errorData = await response.json();
         alert(`Error saving: ${errorData.detail}`);
       }
-    } catch (err) {
+    } catch {
       alert("Failed to communicate with database.");
     }
   };
@@ -161,6 +171,20 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     const userTimezoneOffset = date.getTimezoneOffset() * 60000;
     const correctedDate = new Date(date.getTime() + userTimezoneOffset);
     return correctedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getStatusBadge = (status: SearchResult['discovery_status']) => {
+    if (status === 'upcoming') {
+      return {
+        label: 'Upcoming',
+        className: 'bg-blue-100 text-blue-800',
+      };
+    }
+
+    return {
+      label: 'Open',
+      className: 'bg-yellow-400 text-yellow-900',
+    };
   };
 
   const getVisiblePages = () => {
@@ -175,7 +199,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-3xl font-bold text-blue-900 mb-2">Opportunity Search</h1>
-        <p className="text-zinc-500">Search the live federal database. Results are automatically sorted by urgent deadlines.</p>
+        <p className="text-zinc-500">Search the live federal database. Results are sorted by Close Date with the earliest close date at the top.</p>
       </header>
 
       {/* --- SEARCH BAR & FILTERS --- */}
@@ -185,7 +209,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 w-5 h-5" />
             <input 
               type="text" 
-              placeholder="Search Grants.gov or leave blank to browse all open grants..." 
+              placeholder="Search Grants.gov or leave blank to browse open and upcoming grants..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full p-3 pl-12 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-blue-900 text-base"
@@ -242,11 +266,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
             <tbody>
               {searchResults.length === 0 && !isSearching ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-zinc-500 font-medium">No active grants found for this filter.</td>
+                  <td colSpan={5} className="p-8 text-center text-zinc-500 font-medium">No open or upcoming grants found for this filter.</td>
                 </tr>
               ) : (
                 searchResults.map((result, idx) => {
                   const isSaved = savedIds.has(result.grant_number);
+                  const statusBadge = getStatusBadge(result.discovery_status);
                   return (
                     <tr key={idx} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
                       <td className="p-4 whitespace-nowrap align-top font-medium text-zinc-900">
@@ -254,8 +279,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                       </td>
                       
                       <td className="p-4 align-top">
-                        <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-sm uppercase tracking-wider">
-                          Open
+                        <span className={`${statusBadge.className} text-xs font-bold px-3 py-1 rounded-sm uppercase tracking-wider`}>
+                          {statusBadge.label}
                         </span>
                       </td>
 

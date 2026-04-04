@@ -1,5 +1,6 @@
 import sqlite3
 import requests
+import time
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -265,37 +266,120 @@ def _normalize_grants_gov_date(raw_date_value) -> tuple[str, str]:
     return formatted_date, sort_date
 
 
-def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = None, page: int = 1, page_size: int = 25):
-    """Search Grants.gov with optional filters and pagination."""
-    url = "https://api.grants.gov/v1/api/search2"
+DISCOVERY_OPEN_STATUSES = {"posted"}
+DISCOVERY_UPCOMING_STATUSES = {"forecasted", "forecast"}
+DISCOVERY_ALLOWED_STATUSES = DISCOVERY_OPEN_STATUSES | DISCOVERY_UPCOMING_STATUSES
+GRANTS_GOV_MAX_ROWS_PER_REQUEST = 100
+DISCOVERY_CACHE_TTL_SECONDS = 120
+
+_discovery_search_cache = {}
+
+
+def _normalize_grants_gov_status(raw_status_value) -> str:
+    return str(raw_status_value or "").strip().lower()
+
+
+def _get_discovery_status_label(raw_status_value) -> str:
+    status = _normalize_grants_gov_status(raw_status_value)
+    if status in DISCOVERY_OPEN_STATUSES:
+        return "open"
+    if status in DISCOVERY_UPCOMING_STATUSES:
+        return "upcoming"
+    return "other"
+
+
+def _build_grants_gov_search_payload(
+    keyword: Optional[str] = None,
+    category: Optional[str] = None,
+    start_record_num: int = 0,
+    rows: int = GRANTS_GOV_MAX_ROWS_PER_REQUEST,
+):
     payload = {
-        "oppStatuses": "posted",
-        "rows": page_size,
-        "startRecordNum": max(page - 1, 0) * page_size,
+        "oppStatuses": "|".join(sorted(DISCOVERY_ALLOWED_STATUSES)),
+        "rows": rows,
+        "startRecordNum": max(start_record_num, 0),
     }
     if keyword:
         payload["keyword"] = keyword
     if category and category != "All":
         payload["fundingCategories"] = category
+    return payload
 
+
+def _fetch_grants_gov_search_page(
+    keyword: Optional[str] = None,
+    category: Optional[str] = None,
+    start_record_num: int = 0,
+    rows: int = GRANTS_GOV_MAX_ROWS_PER_REQUEST,
+):
+    url = "https://api.grants.gov/v1/api/search2"
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Content-Type": "application/json"
     }
-    
+    payload = _build_grants_gov_search_payload(
+        keyword=keyword,
+        category=category,
+        start_record_num=start_record_num,
+        rows=rows,
+    )
+
+    response = requests.post(url, json=payload, headers=headers, timeout=10)
+    if not response.ok:
+        raise HTTPException(status_code=500, detail="Grants.gov rejected request.")
+
+    json_response = response.json()
+    if json_response.get("errorcode") != 0:
+        raise HTTPException(status_code=500, detail="Grants.gov search returned an error.")
+
+    return json_response.get("data", {})
+
+
+def _get_discovery_cache_key(keyword: Optional[str], category: Optional[str]):
+    normalized_keyword = (keyword or "").strip().lower()
+    normalized_category = (category or "All").strip()
+    return (normalized_keyword, normalized_category)
+
+
+def _get_cached_discovery_dataset(keyword: Optional[str], category: Optional[str]):
+    cache_key = _get_discovery_cache_key(keyword, category)
+    cached_entry = _discovery_search_cache.get(cache_key)
+    if not cached_entry:
+        return None
+
+    if time.monotonic() - cached_entry["created_at"] > DISCOVERY_CACHE_TTL_SECONDS:
+        _discovery_search_cache.pop(cache_key, None)
+        return None
+
+    return cached_entry
+
+
+def _cache_discovery_dataset(keyword: Optional[str], category: Optional[str], results, categories):
+    cache_key = _get_discovery_cache_key(keyword, category)
+    _discovery_search_cache[cache_key] = {
+        "created_at": time.monotonic(),
+        "results": results,
+        "categories": categories,
+    }
+
+
+def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = None, page: int = 1, page_size: int = 25):
+    """Search Grants.gov, sort the full result set by Close Date, then paginate."""
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if not response.ok:
-            raise HTTPException(status_code=500, detail="Grants.gov rejected request.")
-            
-        json_response = response.json()
-        results = []
-        categories = []
-        total_results = 0
-        
-        if json_response.get("errorcode") == 0 and "oppHits" in json_response.get("data", {}):
-            data = json_response["data"]
-            total_results = int(data.get("hitCount") or 0)
+        cached_dataset = _get_cached_discovery_dataset(keyword, category)
+        if cached_dataset:
+            results = cached_dataset["results"]
+            categories = cached_dataset["categories"]
+        else:
+            results = []
+            categories = []
+            data = _fetch_grants_gov_search_page(
+                keyword=keyword,
+                category=category,
+                start_record_num=0,
+                rows=GRANTS_GOV_MAX_ROWS_PER_REQUEST,
+            )
+            total_hits = int(data.get("hitCount") or 0)
 
             for category_option in data.get("fundingCategories", []):
                 label = category_option.get("label")
@@ -307,19 +391,37 @@ def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = 
                         "count": category_option.get("count", 0),
                     })
 
-            for hit in data["oppHits"]:
-                
-                # FILTER: We only want to see active, open grants we can apply for
-                if hit.get("oppStatus") != "posted":
+            all_hits = list(data.get("oppHits", []))
+            next_start_record_num = len(all_hits)
+            while next_start_record_num < total_hits:
+                paged_data = _fetch_grants_gov_search_page(
+                    keyword=keyword,
+                    category=category,
+                    start_record_num=next_start_record_num,
+                    rows=GRANTS_GOV_MAX_ROWS_PER_REQUEST,
+                )
+                page_hits = paged_data.get("oppHits", [])
+                if not page_hits:
+                    break
+                all_hits.extend(page_hits)
+                next_start_record_num += len(page_hits)
+
+            for hit in all_hits:
+                opp_status = _normalize_grants_gov_status(hit.get("oppStatus"))
+
+                # Discovery should show both currently open and not-yet-open grants.
+                if opp_status not in DISCOVERY_ALLOWED_STATUSES:
                     continue
 
                 formatted_date, sort_date = _normalize_grants_gov_date(hit.get("closeDate"))
-                
+                discovery_status = _get_discovery_status_label(opp_status)
+
                 results.append({
                     "grant_number": hit.get("number") or hit.get("oppNum") or "Unknown",
                     "title": hit.get("title") or hit.get("opportunityTitle") or "Title not found",
                     "agency": hit.get("agencyName") or hit.get("agency") or "Agency not found",
                     "deadline": formatted_date,
+                    "discovery_status": discovery_status,
                     "sort_date": sort_date,
                     "grants_gov_id": hit.get("id"),
                     "funder_portal_url": (
@@ -328,19 +430,26 @@ def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = 
                         else None
                     ),
                 })
-        
-        # Sorting engine
-        results.sort(key=lambda x: x["sort_date"])
-        
+
+            # Sort strictly by the same Close Date value shown in Discovery.
+            # Opportunities without a usable close date fall to the end.
+            results.sort(key=lambda x: x["sort_date"])
+            categories.sort(key=lambda option: option["label"])
+            _cache_discovery_dataset(keyword, category, results, categories)
+
+        total_results = len(results)
+        start_index = max(page - 1, 0) * page_size
+        end_index = start_index + page_size
+        paginated_results = [dict(result) for result in results[start_index:end_index]]
+
         # Clean up our temporary sorting key before sending to React
-        for r in results:
+        for r in paginated_results:
             del r["sort_date"]
 
-        categories.sort(key=lambda option: option["label"])
         total_pages = max((total_results + page_size - 1) // page_size, 1)
 
         return {
-            "results": results,
+            "results": paginated_results,
             "categories": categories,
             "total_results": total_results,
             "current_page": page,

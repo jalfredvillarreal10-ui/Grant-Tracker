@@ -13,13 +13,13 @@ import {
   Trophy,
   XCircle,
 } from 'lucide-react';
-import type { Grant } from '../types/grant';
+import type { Grant, GrantStatus } from '../types/grant';
 
 interface GrantCardProps {
   grant: Grant;
   onMoveToApplied?: (id: string) => void;
   onAction?: (id: string, action: string) => void;
-  onUpdateStatus?: (id: string, status: any) => void;
+  onUpdateStatus?: (id: string, status: GrantStatus) => void;
   onReActivate?: (id: string) => void;
   onShowFeedback?: (grant: Grant) => void;
 }

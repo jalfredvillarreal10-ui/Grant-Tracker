@@ -7,7 +7,12 @@ import ExitInterviewModal from '../components/ExitInterviewModal';
 
 interface LifecycleProps {
   grants: Grant[];
-  onUpdateStatus: (id: string, status: GrantStatus, rejectionReason?: any, feedbackSummary?: string) => void;
+  onUpdateStatus: (
+    id: string,
+    status: GrantStatus,
+    rejectionReason?: Grant['rejectionReason'],
+    feedbackSummary?: string
+  ) => void;
   onReActivate: (id: string) => void;
 }
 
@@ -35,7 +40,7 @@ const archivedGrants = grants
     }
   };
 
-  const handleExitInterviewSubmit = (reason: any, summary: string) => {
+  const handleExitInterviewSubmit = (reason: Grant['rejectionReason'], summary: string) => {
     if (selectedGrantForExit) {
       onUpdateStatus(selectedGrantForExit.id, selectedGrantForExit.status, reason, summary);
       setSelectedGrantForExit(null);

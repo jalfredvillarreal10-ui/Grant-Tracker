@@ -9,6 +9,39 @@ import type { Grant, GrantStatus } from './types/grant'
 
 type Page = 'discovery' | 'lifecycle' | 'portfolio' | 'reporting';
 
+type BackendGrant = {
+  id: number;
+  grant_number: string;
+  title: string;
+  agency: Grant['source'];
+  amount?: number | null;
+  status: GrantStatus;
+  deadline?: string | null;
+  submission_date?: string | null;
+  expected_notification_date?: string | null;
+  poc_name?: string | null;
+  poc_email?: string | null;
+  internal_lead?: string | null;
+  application_status?: Grant['applicationStatus'];
+  rejection_reason?: Grant['rejectionReason'];
+  feedback_summary?: string | null;
+  denial_date?: string | null;
+  expiration_date?: string | null;
+  spent_amount?: number | null;
+  compliance_category?: Grant['complianceCategory'];
+  program_manager?: string | null;
+  next_report_due?: string | null;
+  onboarding_date?: string | null;
+  is_extended?: boolean | null;
+  renewal_status?: Grant['renewalStatus'] | null;
+  funder_portal_url?: string | null;
+  grants_gov_id?: string | null;
+};
+
+function optionalString(value?: string | null) {
+  return value ?? undefined;
+}
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userEmail, setUserEmail] = useState('')
@@ -35,37 +68,37 @@ function App() {
     try {
       const response = await fetch('http://localhost:8000/api/grants');
       if (response.ok) {
-        const dbGrants = await response.json();
+        const dbGrants: BackendGrant[] = await response.json();
         
         // Map backend database schema to your rich frontend UI schema
-        const mappedGrants: Grant[] = dbGrants.map((g: any) => ({
+        const mappedGrants: Grant[] = dbGrants.map((g) => ({
           id: g.id.toString(),
           funderId: g.grant_number,
           title: g.title,
           source: g.agency,
           amount: g.amount || 0,
           status: g.status,
-          deadline: g.deadline,
-          submissionDate: g.submission_date,
-          expectedNotificationDate: g.expected_notification_date,
-          pocName: g.poc_name,
-          pocEmail: g.poc_email,
-          internalLead: g.internal_lead,
+          deadline: optionalString(g.deadline),
+          submissionDate: optionalString(g.submission_date),
+          expectedNotificationDate: optionalString(g.expected_notification_date),
+          pocName: optionalString(g.poc_name),
+          pocEmail: optionalString(g.poc_email),
+          internalLead: optionalString(g.internal_lead),
           applicationStatus: g.application_status,
           rejectionReason: g.rejection_reason,
-          feedbackSummary: g.feedback_summary,
-          denialDate: g.denial_date,
-          expirationDate: g.expiration_date,
+          feedbackSummary: optionalString(g.feedback_summary),
+          denialDate: optionalString(g.denial_date),
+          expirationDate: optionalString(g.expiration_date),
           spentAmount: g.spent_amount || 0,
-          remainingAmount: g.amount - (g.spent_amount || 0),
+          remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
           complianceCategory: g.compliance_category,
-          programManager: g.program_manager,
-          nextReportDue: g.next_report_due,
-          onboardingDate: g.onboarding_date,
+          programManager: optionalString(g.program_manager),
+          nextReportDue: optionalString(g.next_report_due),
+          onboardingDate: optionalString(g.onboarding_date),
           isExtended: !!g.is_extended,
           renewalStatus: g.renewal_status || 'None',
-          funderPortalUrl: g.funder_portal_url,
-          grantsGovId: g.grants_gov_id,
+          funderPortalUrl: optionalString(g.funder_portal_url),
+          grantsGovId: optionalString(g.grants_gov_id),
         }));
         
         setGrants(mappedGrants);
@@ -171,7 +204,12 @@ function App() {
     }
   }
 
-  const updateGrantStatus = async (id: string, status: GrantStatus, rejectionReason?: any, feedbackSummary?: string) => {
+  const updateGrantStatus = async (
+    id: string,
+    status: GrantStatus,
+    rejectionReason?: Grant['rejectionReason'],
+    feedbackSummary?: string
+  ) => {
     const grant = grants.find(g => g.id === id);
     if (grant) {
       const updatedGrant: Grant = {
