@@ -131,13 +131,14 @@ const GrantCard: React.FC<GrantCardProps> = ({
       : grant.deadline || grant.expectedNotificationDate || 'Pending';
 
   const primaryLabel = 'Issuing Agency';
-  const secondaryLabel = 'Award Amount';
+  const secondaryLabel = 'Award Value';
   const grantUrl =
     grant.grantsGovId
       ? `https://www.grants.gov/search-results-detail/${grant.grantsGovId}`
       : grant.funderPortalUrl ||
     `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`;
-  const hasAwardAmount = grant.amount > 0;
+  const awardValue = grant.awardCeiling ?? grant.amount;
+  const hasAwardAmount = awardValue > 0;
 
   return (
     <motion.div
@@ -205,7 +206,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
                   <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
                     {secondaryLabel}
                   </p>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{formatCurrency(grant.amount)}</p>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{formatCurrency(awardValue)}</p>
                 </div>
               </div>
             )}
@@ -231,6 +232,23 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
           {isExpanded && (
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e8eef6', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {hasAwardAmount && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                <InfoCard
+                  label="Award Value"
+                  value={formatCurrency(awardValue)}
+                  icon={<Trophy className="h-4 w-4" />}
+                  tone={isApproved ? 'emerald' : 'navy'}
+                />
+                <InfoCard
+                  label="Award Floor"
+                  value={grant.awardFloor ? formatCurrency(grant.awardFloor) : 'Not provided'}
+                  icon={<Trophy className="h-4 w-4" />}
+                  tone="slate"
+                />
+              </div>
+            )}
+
             {grant.status === 'applied' && (
               <>
                 <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
@@ -275,7 +293,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                   <InfoCard label="Expiration Date" value={grant.expirationDate || 'No expiration set'} icon={<CalendarClock className="h-4 w-4" />} tone="emerald" />
-                  <InfoCard label="Funds Remaining" value={`${formatCurrency(grant.remainingAmount || 0)} remaining`} icon={<Trophy className="h-4 w-4" />} tone="emerald" />
+                  <InfoCard label="Award Amount" value={hasAwardAmount ? formatCurrency(awardValue) : 'Not provided'} icon={<Trophy className="h-4 w-4" />} tone="emerald" />
                 </div>
 
                 <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>

@@ -38,6 +38,8 @@ def init_db():
                 agency TEXT NOT NULL,
                 deadline DATE NOT NULL,
                 amount INTEGER DEFAULT 0,
+                award_floor INTEGER,
+                award_ceiling INTEGER,
                 status TEXT DEFAULT 'available',
                 submission_date DATE,
                 expected_notification_date DATE,
@@ -65,6 +67,10 @@ def init_db():
             cursor.execute("ALTER TABLE grants ADD COLUMN poc_name TEXT")
         if "poc_email" not in existing_columns:
             cursor.execute("ALTER TABLE grants ADD COLUMN poc_email TEXT")
+        if "award_floor" not in existing_columns:
+            cursor.execute("ALTER TABLE grants ADD COLUMN award_floor INTEGER")
+        if "award_ceiling" not in existing_columns:
+            cursor.execute("ALTER TABLE grants ADD COLUMN award_ceiling INTEGER")
         if "funder_portal_url" not in existing_columns:
             cursor.execute("ALTER TABLE grants ADD COLUMN funder_portal_url TEXT")
         if "grants_gov_id" not in existing_columns:
@@ -92,6 +98,8 @@ class GrantBase(BaseModel):
     agency: str
     deadline: str
     amount: int = 0
+    award_floor: Optional[int] = None
+    award_ceiling: Optional[int] = None
     status: str = "available"
     submission_date: Optional[str] = None
     expected_notification_date: Optional[str] = None
@@ -142,14 +150,14 @@ def create_grant(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_con
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO grants (
-                grant_number, title, agency, deadline, amount, status, submission_date, expected_notification_date,
+                grant_number, title, agency, deadline, amount, award_floor, award_ceiling, status, submission_date, expected_notification_date,
                 poc_name, poc_email, internal_lead, application_status, rejection_reason, feedback_summary,
                 denial_date, expiration_date, spent_amount, compliance_category, program_manager,
                 next_report_due, onboarding_date, is_extended, renewal_status, funder_portal_url, grants_gov_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status,
+            grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.award_floor, grant.award_ceiling, grant.status,
             grant.submission_date, grant.expected_notification_date, grant.poc_name, grant.poc_email,
             grant.internal_lead, grant.application_status, grant.rejection_reason, grant.feedback_summary,
             grant.denial_date, grant.expiration_date, grant.spent_amount, grant.compliance_category,
@@ -167,7 +175,7 @@ def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Dep
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE grants 
-        SET grant_number = ?, title = ?, agency = ?, deadline = ?, amount = ?, status = ?, 
+        SET grant_number = ?, title = ?, agency = ?, deadline = ?, amount = ?, award_floor = ?, award_ceiling = ?, status = ?, 
             submission_date = ?, expected_notification_date = ?, 
             poc_name = ?, poc_email = ?, internal_lead = ?, application_status = ?, rejection_reason = ?, 
             feedback_summary = ?, denial_date = ?, expiration_date = ?, 
@@ -175,7 +183,7 @@ def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Dep
             next_report_due = ?, onboarding_date = ?, is_extended = ?, 
             renewal_status = ?, funder_portal_url = ?, grants_gov_id = ?
         WHERE id = ?
-    ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.status, 
+    ''', (grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.award_floor, grant.award_ceiling, grant.status, 
           grant.submission_date, grant.expected_notification_date, 
           grant.poc_name, grant.poc_email, grant.internal_lead, grant.application_status, grant.rejection_reason, 
           grant.feedback_summary, grant.denial_date, grant.expiration_date, 
@@ -238,6 +246,59 @@ def fetch_from_grants_gov(opportunity_number: str):
                 }
                 
         raise HTTPException(status_code=404, detail="Grant not found on Grants.gov")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+
+def _parse_grants_gov_currency(raw_value) -> Optional[int]:
+    if raw_value is None:
+        return None
+
+    cleaned_value = str(raw_value).strip().replace(",", "").replace("$", "")
+    if not cleaned_value:
+        return None
+
+    try:
+        return int(float(cleaned_value))
+    except ValueError:
+        return None
+
+
+@app.get("/api/grantsgov/opportunity/{opportunity_id}")
+def fetch_grants_gov_opportunity(opportunity_id: str):
+    """Fetch detailed opportunity data, including award ceiling/floor, from Grants.gov."""
+    url = "https://api.grants.gov/v1/api/fetchOpportunity"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Content-Type": "application/json"
+    }
+    payload = {"opportunityId": opportunity_id}
+
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if not response.ok:
+            raise HTTPException(status_code=500, detail="Grants.gov rejected detail request.")
+
+        json_response = response.json()
+        if json_response.get("errorcode") != 0:
+            raise HTTPException(status_code=500, detail="Grants.gov opportunity detail returned an error.")
+
+        data = json_response.get("data") or {}
+        synopsis = data.get("synopsis") or {}
+
+        award_ceiling = _parse_grants_gov_currency(synopsis.get("awardCeiling"))
+        award_floor = _parse_grants_gov_currency(synopsis.get("awardFloor"))
+
+        return {
+            "opportunity_id": data.get("id") or opportunity_id,
+            "grant_number": data.get("opportunityNumber"),
+            "title": data.get("opportunityTitle"),
+            "agency": synopsis.get("agencyName"),
+            "award_floor": award_floor,
+            "award_ceiling": award_ceiling,
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 

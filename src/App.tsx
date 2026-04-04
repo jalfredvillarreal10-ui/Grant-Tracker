@@ -15,6 +15,8 @@ type BackendGrant = {
   title: string;
   agency: Grant['source'];
   amount?: number | null;
+  award_floor?: number | null;
+  award_ceiling?: number | null;
   status: GrantStatus;
   deadline?: string | null;
   submission_date?: string | null;
@@ -41,6 +43,11 @@ type BackendGrant = {
 function optionalString(value?: string | null) {
   return value ?? undefined;
 }
+
+type OpportunityDetailsResponse = {
+  award_floor?: number | null;
+  award_ceiling?: number | null;
+};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -77,6 +84,8 @@ function App() {
           title: g.title,
           source: g.agency,
           amount: g.amount || 0,
+          awardFloor: g.award_floor ?? undefined,
+          awardCeiling: g.award_ceiling ?? undefined,
           status: g.status,
           deadline: optionalString(g.deadline),
           submissionDate: optionalString(g.submission_date),
@@ -102,6 +111,110 @@ function App() {
         }));
         
         setGrants(mappedGrants);
+
+        const grantsMissingAwardData = mappedGrants.filter(
+          (grant) => grant.grantsGovId && grant.awardCeiling == null
+        );
+
+        if (grantsMissingAwardData.length > 0) {
+          const hydratedGrants = await Promise.all(
+            grantsMissingAwardData.map(async (grant) => {
+              try {
+                const detailResponse = await fetch(`http://localhost:8000/api/grantsgov/opportunity/${grant.grantsGovId}`);
+                if (!detailResponse.ok) return null;
+
+                const details: OpportunityDetailsResponse = await detailResponse.json();
+                if (details.award_ceiling == null && details.award_floor == null) return null;
+
+                const updatedGrant: Grant = {
+                  ...grant,
+                  amount: details.award_ceiling ?? grant.amount,
+                  awardFloor: details.award_floor ?? grant.awardFloor,
+                  awardCeiling: details.award_ceiling ?? grant.awardCeiling,
+                  remainingAmount:
+                    (details.award_ceiling ?? grant.amount) - (grant.spentAmount || 0),
+                };
+
+                const saveResponse = await fetch(`http://localhost:8000/api/grants/${grant.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    grant_number: updatedGrant.funderId,
+                    title: updatedGrant.title,
+                    agency: updatedGrant.source,
+                    deadline: updatedGrant.deadline,
+                    amount: updatedGrant.amount,
+                    award_floor: updatedGrant.awardFloor,
+                    award_ceiling: updatedGrant.awardCeiling,
+                    status: updatedGrant.status,
+                    submission_date: updatedGrant.submissionDate,
+                    expected_notification_date: updatedGrant.expectedNotificationDate,
+                    poc_name: updatedGrant.pocName,
+                    poc_email: updatedGrant.pocEmail,
+                    internal_lead: updatedGrant.internalLead,
+                    application_status: updatedGrant.applicationStatus,
+                    rejection_reason: updatedGrant.rejectionReason,
+                    feedback_summary: updatedGrant.feedbackSummary,
+                    denial_date: updatedGrant.denialDate,
+                    expiration_date: updatedGrant.expirationDate,
+                    spent_amount: updatedGrant.spentAmount || 0,
+                    compliance_category: updatedGrant.complianceCategory,
+                    program_manager: updatedGrant.programManager,
+                    next_report_due: updatedGrant.nextReportDue,
+                    onboarding_date: updatedGrant.onboardingDate,
+                    is_extended: !!updatedGrant.isExtended,
+                    renewal_status: updatedGrant.renewalStatus || 'None',
+                    funder_portal_url: updatedGrant.funderPortalUrl,
+                    grants_gov_id: updatedGrant.grantsGovId,
+                  })
+                });
+
+                return saveResponse.ok ? updatedGrant.id : null;
+              } catch (error) {
+                console.error('Failed to hydrate grant award data:', error);
+                return null;
+              }
+            })
+          );
+
+          if (hydratedGrants.some(Boolean)) {
+            const refreshedResponse = await fetch('http://localhost:8000/api/grants');
+            if (refreshedResponse.ok) {
+              const refreshedDbGrants: BackendGrant[] = await refreshedResponse.json();
+              setGrants(refreshedDbGrants.map((g) => ({
+                id: g.id.toString(),
+                funderId: g.grant_number,
+                title: g.title,
+                source: g.agency,
+                amount: g.amount || 0,
+                awardFloor: g.award_floor ?? undefined,
+                awardCeiling: g.award_ceiling ?? undefined,
+                status: g.status,
+                deadline: optionalString(g.deadline),
+                submissionDate: optionalString(g.submission_date),
+                expectedNotificationDate: optionalString(g.expected_notification_date),
+                pocName: optionalString(g.poc_name),
+                pocEmail: optionalString(g.poc_email),
+                internalLead: optionalString(g.internal_lead),
+                applicationStatus: g.application_status,
+                rejectionReason: g.rejection_reason,
+                feedbackSummary: optionalString(g.feedback_summary),
+                denialDate: optionalString(g.denial_date),
+                expirationDate: optionalString(g.expiration_date),
+                spentAmount: g.spent_amount || 0,
+                remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
+                complianceCategory: g.compliance_category,
+                programManager: optionalString(g.program_manager),
+                nextReportDue: optionalString(g.next_report_due),
+                onboardingDate: optionalString(g.onboarding_date),
+                isExtended: !!g.is_extended,
+                renewalStatus: g.renewal_status || 'None',
+                funderPortalUrl: optionalString(g.funder_portal_url),
+                grantsGovId: optionalString(g.grants_gov_id),
+              })));
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to fetch grants:", error);
@@ -121,6 +234,8 @@ function App() {
           agency: grant.source,
           deadline: grant.deadline,
           amount: grant.amount,
+          award_floor: grant.awardFloor,
+          award_ceiling: grant.awardCeiling,
           status: grant.status,
           submission_date: grant.submissionDate,
           expected_notification_date: grant.expectedNotificationDate,
@@ -238,6 +353,8 @@ function App() {
         agency: grant.source,
         deadline: grant.expirationDate || grant.deadline || '2099-12-31',
         amount: grant.amount,
+        award_floor: grant.awardFloor,
+        award_ceiling: grant.awardCeiling,
         status: 'applied',
         submission_date: today,
         expected_notification_date: grant.expirationDate || null,

@@ -28,6 +28,11 @@ type SearchResult = {
   funder_portal_url?: string;
 };
 
+type OpportunityDetails = {
+  award_floor?: number | null;
+  award_ceiling?: number | null;
+};
+
 type SearchResponse = {
   results: SearchResult[];
   categories: CategoryOption[];
@@ -131,6 +136,18 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     if (savedIds.has(grant.grant_number)) return;
 
     try {
+      let opportunityDetails: OpportunityDetails = {};
+
+      if (grant.grants_gov_id) {
+        const detailsResponse = await fetch(`http://localhost:8000/api/grantsgov/opportunity/${grant.grants_gov_id}`);
+        if (detailsResponse.ok) {
+          opportunityDetails = await detailsResponse.json();
+        }
+      }
+
+      const awardCeiling = opportunityDetails.award_ceiling ?? null;
+      const awardFloor = opportunityDetails.award_floor ?? null;
+
       const response = await fetch('http://localhost:8000/api/grants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +157,9 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
           agency: grant.agency,
           deadline: grant.deadline || "2099-12-31",
           status: "applied",
-          amount: 0,
+          amount: awardCeiling ?? 0,
+          award_floor: awardFloor,
+          award_ceiling: awardCeiling,
           submission_date: new Date().toISOString().split('T')[0],
           application_status: "Submitted",
           grants_gov_id: grant.grants_gov_id,
