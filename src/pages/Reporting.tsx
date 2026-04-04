@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar, Download } from 'lucide-react';
+import ExcelJS from 'exceljs';
 import type { Grant } from '../types/grant';
 
 interface ReportingProps {
@@ -7,6 +8,8 @@ interface ReportingProps {
 }
 
 const Reporting: React.FC<ReportingProps> = ({ grants }) => {
+  const filteredGrants = grants;
+
   // Combine all important dates for the timeline
   const timelineEvents = grants.flatMap(g => {
     const events = [];
@@ -19,6 +22,96 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
   const totalFunds = grants.filter(g => g.status === 'approved').reduce((acc, g) => acc + g.amount, 0);
   const pendingFunds = grants.filter(g => g.status === 'applied').reduce((acc, g) => acc + g.amount, 0);
 
+  const handleExportExcel = async (items: Grant[]) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Executive Grants', {
+      views: [{ state: 'frozen', ySplit: 1 }],
+    });
+
+    worksheet.columns = [
+      { header: 'Grant ID', key: 'grantId', width: 35 },
+      { header: 'Opportunity Title', key: 'opportunityTitle', width: 60 },
+      { header: 'Issuing Agency', key: 'issuingAgency', width: 50 },
+      { header: 'Total Award', key: 'totalAward', width: 16 },
+      { header: 'Current Status', key: 'currentStatus', width: 18 },
+      { header: 'Application Deadline', key: 'applicationDeadline', width: 18 },
+      { header: 'Internal Lead', key: 'internalLead', width: 22 },
+    ];
+
+    items.forEach((grant) => {
+      const record = grant as Grant & {
+        grant_number?: string;
+        agency?: string;
+      };
+
+      worksheet.addRow({
+        grantId: record.grant_number ?? grant.funderId,
+        opportunityTitle: grant.title,
+        issuingAgency: record.agency ?? grant.source,
+        totalAward: Number(grant.amount ?? 0),
+        currentStatus: grant.status.charAt(0).toUpperCase() + grant.status.slice(1),
+        applicationDeadline: grant.deadline ?? '',
+        internalLead: grant.internalLead ?? 'Unassigned',
+      });
+    });
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.height = 22;
+    headerRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' },
+      };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF002158' },
+      };
+      cell.alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD9E2F2' } },
+        left: { style: 'thin', color: { argb: 'FFD9E2F2' } },
+        bottom: { style: 'thin', color: { argb: 'FFD9E2F2' } },
+        right: { style: 'thin', color: { argb: 'FFD9E2F2' } },
+      };
+    });
+
+    worksheet.getColumn('totalAward').numFmt = '$#,##0.00';
+    worksheet.autoFilter = 'A1:G1';
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      row.eachCell((cell, colNumber) => {
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: colNumber === 4 ? 'right' : 'left',
+        };
+      });
+    });
+
+    const today = new Date();
+    const formattedDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob(
+      [buffer],
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Laredo_Executive_Grants_Report_${formattedDate}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <header className="flex justify-between items-end">
@@ -26,8 +119,11 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
           <h1 className="text-3xl font-bold text-blue-900">Master Insights & Reporting</h1>
           <p className="text-zinc-500">Unified visualization of the funding pipeline.</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Download className="w-4 h-4" /> Export Executive PDF
+        <button
+          className="btn-primary flex items-center gap-2"
+          onClick={() => handleExportExcel(filteredGrants)}
+        >
+          <Download className="w-4 h-4" /> Export Executive Excel
         </button>
       </header>
 
