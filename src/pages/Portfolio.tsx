@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Filter, ChevronDown } from 'lucide-react';
+import { Filter, ChevronDown } from 'lucide-react';
 import type { Grant } from '../types/grant';
 import GrantCard from '../components/GrantCard';
 import CloseoutChecklistModal from '../components/CloseoutChecklistModal';
@@ -62,25 +62,13 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
 
   const filteredGrants = getFilteredGrants();
 
-  const handleExport = () => {
-    // Logic for Monthly Grant Status Report for Health Department Director
-    console.log("Exporting Monthly Grant Status Report...");
-    alert("Generating Monthly Grant Status Report for the Health Department Director...");
-  };
-
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex justify-between items-start">
+      <header>
         <div>
           <h1 className="text-3xl font-bold text-blue-900">Awarded Grants Portfolio</h1>
           <p className="text-zinc-500">Active management of secured funds and departmental priority assets.</p>
         </div>
-        <button 
-          onClick={handleExport}
-          className="btn-primary flex items-center gap-2 bg-[#002d62] text-white"
-        >
-          <Download size={18} /> Quick Export
-        </button>
       </header>
 
       <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border border-zinc-100 self-start">
