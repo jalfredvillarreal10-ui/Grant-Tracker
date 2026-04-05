@@ -54,6 +54,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [opportunityDetailsById, setOpportunityDetailsById] = useState<Record<string, OpportunityDetails>>({});
+  const [loadingDetailIds, setLoadingDetailIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     runSearch({ keyword: '', category: DEFAULT_CATEGORY, page: 1 });
@@ -63,6 +65,42 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     const existingIds = new Set(grants.map(g => g.funderId));
     setSavedIds(existingIds);
   }, [grants]);
+
+  useEffect(() => {
+    const visibleOpportunityIds = searchResults
+      .map(result => result.grants_gov_id)
+      .filter((id): id is string => Boolean(id))
+      .filter(id => !(id in opportunityDetailsById) && !loadingDetailIds.has(id));
+
+    if (visibleOpportunityIds.length === 0) return;
+
+    setLoadingDetailIds(prev => {
+      const next = new Set(prev);
+      visibleOpportunityIds.forEach(id => next.add(id));
+      return next;
+    });
+
+    void Promise.allSettled(
+      visibleOpportunityIds.map(async (id) => {
+        const response = await fetch(`http://localhost:8000/api/grantsgov/opportunity/${id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch details for ${id}`);
+        }
+
+        const details: OpportunityDetails = await response.json();
+        setOpportunityDetailsById(prev => ({
+          ...prev,
+          [id]: details,
+        }));
+      })
+    ).finally(() => {
+      setLoadingDetailIds(prev => {
+        const next = new Set(prev);
+        visibleOpportunityIds.forEach(id => next.delete(id));
+        return next;
+      });
+    });
+  }, [searchResults, opportunityDetailsById, loadingDetailIds]);
 
   const runSearch = async ({
     keyword,
@@ -214,6 +252,11 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     return Array.from({ length: end - adjustedStart + 1 }, (_, index) => adjustedStart + index);
   };
 
+  const formatCurrency = (amount?: number | null) => {
+    if (amount == null) return 'Not provided';
+    return `$${amount.toLocaleString()}`;
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <header>
@@ -279,18 +322,22 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                 <th className="p-4 font-bold w-24">Status</th>
                 <th className="p-4 font-bold">Title & Opportunity Number</th>
                 <th className="p-4 font-bold w-1/4">Agency</th>
+                <th className="p-4 font-bold w-36">Award Floor</th>
+                <th className="p-4 font-bold w-36">Award Ceiling</th>
                 <th className="p-4 font-bold text-center w-32">Action</th>
               </tr>
             </thead>
             <tbody>
               {searchResults.length === 0 && !isSearching ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-zinc-500 font-medium">No open or upcoming grants found for this filter.</td>
+                  <td colSpan={7} className="p-8 text-center text-zinc-500 font-medium">No open or upcoming grants found for this filter.</td>
                 </tr>
               ) : (
                 searchResults.map((result, idx) => {
                   const isSaved = savedIds.has(result.grant_number);
                   const statusBadge = getStatusBadge(result.discovery_status);
+                  const opportunityDetails = result.grants_gov_id ? opportunityDetailsById[result.grants_gov_id] : undefined;
+                  const isDetailsLoading = result.grants_gov_id ? loadingDetailIds.has(result.grants_gov_id) : false;
                   return (
                     <tr key={idx} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
                       <td className="p-4 whitespace-nowrap align-top font-medium text-zinc-900">
@@ -323,6 +370,14 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
                       <td className="p-4 align-top text-sm text-zinc-700">
                         {result.agency}
+                      </td>
+
+                      <td className="p-4 align-top text-sm font-semibold text-zinc-700 whitespace-nowrap">
+                        {isDetailsLoading ? 'Loading...' : formatCurrency(opportunityDetails?.award_floor)}
+                      </td>
+
+                      <td className="p-4 align-top text-sm font-semibold text-zinc-700 whitespace-nowrap">
+                        {isDetailsLoading ? 'Loading...' : formatCurrency(opportunityDetails?.award_ceiling)}
                       </td>
 
                       <td className="p-4 align-top text-center">
