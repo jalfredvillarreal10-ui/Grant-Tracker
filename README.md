@@ -93,10 +93,7 @@ To facilitate detailed external reporting and internal record-keeping, LHGP will
 - The "Laredo Gold" Badge: Any awarded grant with a total value exceeding $500,000 features a persistent Gold Badge in the list view, signaling its status as a "Departmental Priority Asset."
 - Export Functionality: The Awarded list includes a "Quick Export" button to generate a Monthly Grant Status Report specifically for the Health Department Director.
 # 9. Roadmap Priorities
-- Exporable Reports
 - Reminder System
-- Page/Link Primary Sort Objective Key UI Focus Dropdown/Filter Content
-- Available Reward Amount (High to Low) Prioritize ROI Financial Value & Eligibility Filter by Source (Federal/State/Private)
 - Applied Deadline (Soonest First) Monitor Pipeline Follow-up & Decision Dates Filter by Internal Lead (Staff Member)
 - Approved Expiration Date (Soonest First) Compliance & Renewal Urgency & Burn Rate Filter by Award Status (Active/Closed/Renewal)
   
