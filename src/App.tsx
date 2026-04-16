@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw, Sun, Moon, Trash2 } from 'lucide-react'
+import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw, Sun, Moon, Trash2, TrendingUp } from 'lucide-react'
 import Login from './components/Login'
 import Discovery from './pages/Discovery'
 import Lifecycle from './pages/Lifecycle'
@@ -416,47 +416,62 @@ function App() {
 
   return (
     <div className="app-layout">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div style={{ padding: '0 1rem 2rem 1rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', margin: 0 }}>LHGP</h2>
-          <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Health Grant Pulse</span>
+      {/* Header Navigation - Organized and Spacious */}
+      <header className="relative bg-laredo-navy-new text-white pt-1 pb-4 px-8 shadow-lg border-b-2 border-laredo-gold-new"> 
+        {/* Top Info Bar */}
+        <div className="max-w-7xl mx-auto flex justify-between items-center mb-2 border-b border-white/10 pb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Authorized System User:</span>
+            <span className="text-[11px] font-bold text-white truncate max-w-[250px]" title={userEmail}>{userEmail}</span>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 bg-red-900/20 text-red-400 border-none px-3 py-1 rounded-md cursor-pointer font-black text-[9px] hover:bg-red-900/40 transition-colors uppercase tracking-widest"
+          >
+            <LogOut size={10} /> Sign Out
+          </button>
         </div>
 
-        <nav style={{ flex: 1 }}>
-          <div className={`nav-item ${activePage === 'discovery' ? 'active' : ''}`} onClick={() => setActivePage('discovery')}>
-            <Search size={20} /> <span>Discovery</span>
-          </div>
-          <div className={`nav-item ${activePage === 'lifecycle' ? 'active' : ''}`} onClick={() => setActivePage('lifecycle')}>
-            <ListChecks size={20} /> <span>Lifecycle</span>
-          </div>
-          <div className={`nav-item ${activePage === 'portfolio' ? 'active' : ''}`} onClick={() => setActivePage('portfolio')}>
-            <Landmark size={20} /> <span>Portfolio</span>
-          </div>
-          <div className={`nav-item ${activePage === 'reporting' ? 'active' : ''}`} onClick={() => setActivePage('reporting')}>
-            <BarChart3 size={20} /> <span>Reporting</span>
-          </div>
-        </nav>
-
-        <div style={{ marginTop: 'auto', padding: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="flex flex-col">
-              <span className="text-xs text-white opacity-40 uppercase font-bold tracking-tighter">Authorized User</span>
-              <span className="text-xs font-semibold truncate" title={userEmail}>{userEmail}</span>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">        
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-laredo-gold-new rounded-full flex items-center justify-center shadow-inner">
+              <TrendingUp className="text-laredo-navy-new w-5 h-5" />
             </div>
-            <button 
-              onClick={handleLogout}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(200, 16, 46, 0.2)', color: '#ff4d4d', border: 'none', padding: '0.75rem', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}
-            >
-              <LogOut size={16} /> Sign Out
-            </button>
+            <div>
+              <h1 className="text-lg font-black tracking-tighter uppercase leading-none">City of Laredo</h1>
+              <p className="text-laredo-gold-new text-[8px] font-bold tracking-widest uppercase leading-none mt-1">Healthcare Grant Management</p>
+            </div>
           </div>
+
+          <nav className="flex bg-laredo-navy-new/50 p-1 rounded-lg border border-laredo-gold-new/20">
+            {(['discovery', 'lifecycle', 'portfolio', 'reporting'] as const).map((page) => (
+              <button
+                key={page}
+                onClick={() => setActivePage(page)}
+                className={`
+                  px-6 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all duration-300 border-2
+                  ${activePage === page
+                    ? 'bg-laredo-gold-new text-laredo-navy-new border-laredo-gold-new shadow-gold'
+                    : 'text-laredo-gold-new border-transparent hover:border-laredo-gold-new/50'
+                  }
+                `}
+                style={{ cursor: 'pointer' }}
+              >
+                {page}
+              </button>
+            ))}
+          </nav>
         </div>
-      </aside>
+
+        {/* LHGP Label on the border */}
+        <div className="absolute -bottom-[9px] right-12 bg-laredo-gold-new text-laredo-navy-new px-2 py-0.5 text-[8px] font-black rounded-sm shadow-md border border-laredo-navy-new/10 z-10">
+          LHGP
+        </div>
+      </header>
 
       {/* Main Area */}
-      <main className="main-content">
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <main className="main-content" style={{ padding: '2rem 1.5rem' }}>
+        <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
             <button 
               onClick={toggleTheme}
