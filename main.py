@@ -1,6 +1,7 @@
 import sqlite3
 import requests
 import time
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -24,7 +25,7 @@ app.add_middleware(
 )
 
 # 2. DATABASE SETUP
-DB_FILE = "grants.db"
+DB_FILE = Path(__file__).resolve().with_name("grants.db")
 
 GRANT_TABLE_COLUMNS_SQL = '''
     id INTEGER PRIMARY KEY AUTOINCREMENT,

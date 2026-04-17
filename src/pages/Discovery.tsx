@@ -55,7 +55,9 @@ type FavoriteGrant = {
   grants_gov_id?: string | null;
 };
 
-type DiscoveryTab = 'results' | 'favorites';
+type DiscoveryTab = 'results' | 'favorites' | 'tracked';
+
+const normalizeGrantNumber = (value: string) => value.trim().toUpperCase();
 
 const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTracked }) => {
   const [activeTab, setActiveTab] = useState<DiscoveryTab>('results');
@@ -82,10 +84,10 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   }, []);
 
   useEffect(() => {
-    const existingIds = new Set(grants.map(g => g.funderId));
+    const existingIds = new Set(grants.map(g => normalizeGrantNumber(g.funderId)));
     setSavedIds(existingIds);
-    setFavoriteIds(prev => new Set([...prev].filter(id => !existingIds.has(id))));
-    setFavoriteGrants(prev => prev.filter(grant => !existingIds.has(grant.grant_number)));
+    setFavoriteIds(prev => new Set([...prev].filter(id => !existingIds.has(normalizeGrantNumber(id)))));
+    setFavoriteGrants(prev => prev.filter(grant => !existingIds.has(normalizeGrantNumber(grant.grant_number))));
   }, [grants]);
 
   useEffect(() => {
@@ -144,11 +146,11 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
       }
 
       const data: FavoriteGrant[] = await response.json();
-      const trackedIds = new Set(grants.map(grant => grant.funderId));
-      const filteredFavorites = data.filter(grant => !trackedIds.has(grant.grant_number));
+      const trackedIds = new Set(grants.map(grant => normalizeGrantNumber(grant.funderId)));
+      const filteredFavorites = data.filter(grant => !trackedIds.has(normalizeGrantNumber(grant.grant_number)));
 
       setFavoriteGrants(filteredFavorites);
-      setFavoriteIds(new Set(filteredFavorites.map(grant => grant.grant_number)));
+      setFavoriteIds(new Set(filteredFavorites.map(grant => normalizeGrantNumber(grant.grant_number))));
     } catch (fetchError) {
       console.error('Failed to fetch favorites:', fetchError);
     }
@@ -186,7 +188,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     const isTracking = status === 'applied';
 
     return {
-      grant_number: grant.grant_number,
+      grant_number: grant.grant_number.trim(),
       title: grant.title,
       agency: grant.agency,
       deadline: grant.deadline || '2099-12-31',
@@ -277,7 +279,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     grant: SearchResult | FavoriteGrant,
     options?: { navigateToLifecycle?: boolean }
   ) => {
-    if (savedIds.has(grant.grant_number)) return;
+    const normalizedGrantNumber = normalizeGrantNumber(grant.grant_number);
+    if (savedIds.has(normalizedGrantNumber)) return;
 
     setGrantBusy(grant.grant_number, true);
     try {
@@ -289,10 +292,10 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
       });
 
       if (response.ok) {
-        setSavedIds(prev => new Set(prev).add(grant.grant_number));
+        setSavedIds(prev => new Set(prev).add(normalizedGrantNumber));
         setFavoriteIds(prev => {
           const next = new Set(prev);
-          next.delete(grant.grant_number);
+          next.delete(normalizedGrantNumber);
           return next;
         });
         setFavoriteGrants(prev => prev.filter(favorite => favorite.grant_number !== grant.grant_number));
@@ -312,9 +315,10 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   };
 
   const handleToggleFavorite = async (grant: SearchResult) => {
-    if (savedIds.has(grant.grant_number)) return;
+    const normalizedGrantNumber = normalizeGrantNumber(grant.grant_number);
+    if (savedIds.has(normalizedGrantNumber)) return;
 
-    const isFavorite = favoriteIds.has(grant.grant_number);
+    const isFavorite = favoriteIds.has(normalizedGrantNumber);
     setGrantBusy(grant.grant_number, true);
 
     try {
@@ -329,7 +333,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
         setFavoriteIds(prev => {
           const next = new Set(prev);
-          next.delete(grant.grant_number);
+          next.delete(normalizedGrantNumber);
           return next;
         });
         setFavoriteGrants(prev => prev.filter(favorite => favorite.grant_number !== grant.grant_number));
@@ -358,6 +362,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   };
 
   const handleRemoveFavorite = async (grantNumber: string) => {
+    const normalizedGrantNumber = normalizeGrantNumber(grantNumber);
     setGrantBusy(grantNumber, true);
     try {
       const response = await fetch(`http://localhost:8000/api/favorites/${encodeURIComponent(grantNumber)}`, {
@@ -370,7 +375,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
       setFavoriteIds(prev => {
         const next = new Set(prev);
-        next.delete(grantNumber);
+        next.delete(normalizedGrantNumber);
         return next;
       });
       setFavoriteGrants(prev => prev.filter(grant => grant.grant_number !== grantNumber));
@@ -417,6 +422,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
     return `$${amount.toLocaleString()}`;
   };
 
+  const trackedGrants = [...grants].sort((a, b) => {
+    const dateA = new Date(a.submissionDate ?? a.deadline ?? '9999-12-31').getTime();
+    const dateB = new Date(b.submissionDate ?? b.deadline ?? '9999-12-31').getTime();
+    return dateA - dateB;
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <header className="mx-auto flex w-full max-w-6xl flex-col gap-2">
@@ -451,6 +462,20 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
             Favorites
             <span className="ml-2 rounded-full bg-black/10 px-2 py-0.5 text-[11px]">
               {favoriteGrants.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tracked')}
+            className={`rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-[0.16em] transition ${
+              activeTab === 'tracked'
+                ? 'bg-emerald-700 text-white'
+                : 'text-app-secondary hover:bg-app-muted'
+            }`}
+          >
+            Tracked
+            <span className="ml-2 rounded-full bg-black/10 px-2 py-0.5 text-[11px]">
+              {trackedGrants.length}
             </span>
           </button>
         </div>
@@ -721,6 +746,67 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                         >
                           <PlusCircle className="h-4 w-4" />
                           Move to Tracking
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {activeTab === 'tracked' && (
+          <div className="flex flex-col gap-4">
+            {trackedGrants.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-app-border bg-app-muted p-10 text-center text-app-secondary">
+                No tracked grants yet. Move a grant into tracking from Search Results or Favorites.
+              </div>
+            ) : (
+              trackedGrants.map((grant) => {
+                const grantUrl =
+                  grant.grantsGovId
+                    ? `https://www.grants.gov/search-results-detail/${grant.grantsGovId}`
+                    : grant.funderPortalUrl ||
+                      `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`;
+
+                return (
+                  <div
+                    key={grant.id}
+                    className="rounded-2xl border border-app-border bg-app-card p-5 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-5 lg:grid lg:min-h-[132px] lg:grid-cols-[minmax(0,1fr)_224px] lg:items-start">
+                      <div className="flex min-w-0 flex-col justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {grant.status}
+                          </div>
+                          <a
+                            href={grantUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-[1.7rem] font-bold leading-tight text-blue-700 hover:text-app-primary hover:underline"
+                            title="View Official Opportunity Details"
+                          >
+                            {grant.title}
+                          </a>
+                        </div>
+                        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-app-secondary">
+                          <span><span className="font-bold text-app-primary">Number:</span> {grant.funderId}</span>
+                          <span><span className="font-bold text-app-primary">Agency:</span> {grant.source}</span>
+                          <span><span className="font-bold text-app-primary">Deadline:</span> {formatDate(grant.deadline ?? '')}</span>
+                          <span><span className="font-bold text-app-primary">Submitted:</span> {formatDate(grant.submissionDate ?? '')}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex w-full flex-col gap-3 lg:w-[224px]">
+                        <button
+                          type="button"
+                          onClick={() => onGrantTracked?.()}
+                          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:brightness-110"
+                        >
+                          Open Lifecycle
                         </button>
                       </div>
                     </div>

@@ -49,9 +49,11 @@ type OpportunityDetailsResponse = {
   award_ceiling?: number | null;
 };
 
+const AUTH_STORAGE_KEY = 'lhgp-auth-email';
+
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [userEmail, setUserEmail] = useState('')
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem(AUTH_STORAGE_KEY) || '')
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem(AUTH_STORAGE_KEY)))
   const [activePage, setActivePage] = useState<Page>('discovery')
   const [grants, setGrants] = useState<Grant[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -65,6 +67,15 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    if (isAuthenticated && userEmail) {
+      localStorage.setItem(AUTH_STORAGE_KEY, userEmail)
+      return
+    }
+
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+  }, [isAuthenticated, userEmail])
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light')
