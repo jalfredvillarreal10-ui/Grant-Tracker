@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, RefreshCw, Sun, Moon, Trash2, TrendingUp } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, RefreshCw, Sun, Moon, Trash2, TrendingUp } from 'lucide-react'
 import Login from './components/Login'
 import Discovery from './pages/Discovery'
 import Lifecycle from './pages/Lifecycle'
@@ -55,6 +55,7 @@ function App() {
   const [activePage, setActivePage] = useState<Page>('discovery')
   const [grants, setGrants] = useState<Grant[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
   })
@@ -425,12 +426,32 @@ function App() {
               <span className="text-[13px] text-white/45 uppercase font-black tracking-[0.22em]">Authorized Organization Representative:</span>
               <span className="max-w-[280px] truncate text-[15px] font-bold text-white/90" title={userEmail}>{userEmail}</span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-md border border-red-400/35 bg-red-950/25 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-300 transition-colors hover:bg-red-900/40"
-            >
-              <LogOut size={16} /> Sign Out
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsNotificationsOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/8 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/85 transition-colors hover:bg-white/12"
+                  title="Notifications placeholder"
+                >
+                  <Bell size={15} />
+                  Notifications
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-laredo-gold px-1.5 text-[9px] text-black">
+                    0
+                  </span>
+                  <ChevronDown size={14} />
+                </button>
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 h-40 w-72 rounded-xl border border-app-border bg-app-card shadow-xl" />
+                )}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-md border border-red-400/35 bg-red-950/25 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-300 transition-colors hover:bg-red-900/40"
+              >
+                <LogOut size={16} /> Sign Out
+              </button>
+            </div>
           </div>
         </div>
 
