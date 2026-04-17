@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, ListChecks, Landmark, BarChart3, LogOut, RefreshCw, Sun, Moon, Trash2, TrendingUp } from 'lucide-react'
+import { LogOut, RefreshCw, Sun, Moon, Trash2, TrendingUp } from 'lucide-react'
 import Login from './components/Login'
 import Discovery from './pages/Discovery'
 import Lifecycle from './pages/Lifecycle'
@@ -417,79 +417,77 @@ function App() {
   return (
     <div className="app-layout">
       {/* Header Navigation - Organized and Spacious */}
-      <header className="relative bg-laredo-navy-new text-white pt-1 pb-4 px-8 shadow-lg border-b-2 border-laredo-gold-new"> 
+      <header className="border-b-2 border-laredo-gold-new bg-laredo-navy-new px-6 pt-2 pb-8 text-white shadow-lg">
         {/* Top Info Bar */}
-        <div className="max-w-7xl mx-auto flex justify-between items-center mb-2 border-b border-white/10 pb-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Authorized System User:</span>
-            <span className="text-[11px] font-bold text-white truncate max-w-[250px]" title={userEmail}>{userEmail}</span>
+        <div className="w-full border-b border-white/10">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Authorized System User:</span>
+              <span className="max-w-[250px] truncate text-[11px] font-bold text-white/85" title={userEmail}>{userEmail}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 rounded-md border border-red-400/35 bg-red-950/25 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-red-300 transition-colors hover:bg-red-900/40"
+            >
+              <LogOut size={15} /> Sign Out
+            </button>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 bg-red-900/20 text-red-400 border-none px-3 py-1 rounded-md cursor-pointer font-black text-[9px] hover:bg-red-900/40 transition-colors uppercase tracking-widest"
-          >
-            <LogOut size={10} /> Sign Out
-          </button>
         </div>
 
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">        
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-laredo-gold-new rounded-full flex items-center justify-center shadow-inner">
-              <TrendingUp className="text-laredo-navy-new w-5 h-5" />
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 pt-5 md:flex-row md:items-end md:justify-between">
+          <div className="flex items-center gap-3 self-start">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-laredo-gold-new shadow-inner ring-1 ring-white/10">
+              <TrendingUp className="h-[18px] w-[18px] text-laredo-navy-new" />
             </div>
-            <div>
-              <h1 className="text-lg font-black tracking-tighter uppercase leading-none">City of Laredo</h1>
-              <p className="text-laredo-gold-new text-[8px] font-bold tracking-widest uppercase leading-none mt-1">Healthcare Grant Management</p>
+            <div className="flex flex-col items-start justify-center">
+              <h1 className="text-[2rem] font-black uppercase leading-none tracking-[-0.06em] text-white sm:text-[2.3rem]">City of Laredo</h1>
+              <p className="mt-2 inline-flex items-center rounded-sm border border-white/15 bg-white/8 px-2.5 py-1 text-[9px] font-bold uppercase leading-none tracking-[0.22em] text-white/90">
+                Healthcare Grant Management
+              </p>
             </div>
           </div>
 
-          <nav className="flex bg-laredo-navy-new/50 p-1 rounded-lg border border-laredo-gold-new/20">
+          <nav className="flex flex-wrap items-center gap-1 rounded-xl border border-laredo-gold-new/20 bg-white/8 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
             {(['discovery', 'lifecycle', 'portfolio', 'reporting'] as const).map((page) => (
               <button
                 key={page}
                 onClick={() => setActivePage(page)}
                 className={`
-                  px-6 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all duration-300 border-2
+                  rounded-lg border px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] transition-all duration-300
                   ${activePage === page
-                    ? 'bg-laredo-gold-new text-laredo-navy-new border-laredo-gold-new shadow-gold'
-                    : 'text-laredo-gold-new border-transparent hover:border-laredo-gold-new/50'
+                    ? 'border-laredo-gold-new bg-laredo-gold-new text-laredo-navy-new shadow-gold'
+                    : 'border-transparent text-laredo-gold-new hover:border-laredo-gold-new/35 hover:bg-white/6'
                   }
                 `}
-                style={{ cursor: 'pointer' }}
               >
                 {page}
               </button>
             ))}
           </nav>
         </div>
-
-        {/* LHGP Label on the border */}
-        <div className="absolute -bottom-[9px] right-12 bg-laredo-gold-new text-laredo-navy-new px-2 py-0.5 text-[8px] font-black rounded-sm shadow-md border border-laredo-navy-new/10 z-10">
-          LHGP
-        </div>
       </header>
 
       {/* Main Area */}
-      <main className="main-content" style={{ padding: '2rem 1.5rem' }}>
-        <div style={{ maxWidth: '1440px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
+      <main className="main-content px-6 py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <button 
               onClick={toggleTheme}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}
               title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
             >
-              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
             <button 
               onClick={fetchGrants}
-              className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-blue-900 transition-colors bg-transparent border-none cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-blue-900"
             >
               <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /> 
               {isRefreshing ? 'Refreshing Data...' : 'Refresh Data'}
             </button>
             <button
               onClick={clearGrantData}
-              className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-700 transition-colors bg-transparent border-none cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 size={14} />
               Clear Grant Data
