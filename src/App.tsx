@@ -415,21 +415,21 @@ function App() {
   if (!isAuthenticated) return <Login onLogin={handleLogin} />
 
   return (
-    <div className="app-layout">
+    <div className="flex min-h-screen flex-col">
       {/* Header Navigation - Organized and Spacious */}
       <header className="border-b-2 border-laredo-gold-new bg-laredo-navy-new px-6 pt-2 pb-8 text-white shadow-lg">
         {/* Top Info Bar */}
         <div className="w-full border-b border-white/10">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-2">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Authorized System User:</span>
-              <span className="max-w-[250px] truncate text-[11px] font-bold text-white/85" title={userEmail}>{userEmail}</span>
+              <span className="text-[13px] text-white/45 uppercase font-black tracking-[0.22em]">Authorized Organization Representative:</span>
+              <span className="max-w-[280px] truncate text-[15px] font-bold text-white/90" title={userEmail}>{userEmail}</span>
             </div>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 rounded-md border border-red-400/35 bg-red-950/25 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-red-300 transition-colors hover:bg-red-900/40"
+              className="inline-flex items-center gap-2 rounded-md border border-red-400/35 bg-red-950/25 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-300 transition-colors hover:bg-red-900/40"
             >
-              <LogOut size={15} /> Sign Out
+              <LogOut size={16} /> Sign Out
             </button>
           </div>
         </div>
@@ -468,26 +468,26 @@ function App() {
       </header>
 
       {/* Main Area */}
-      <main className="main-content px-6 py-8">
+      <main className="flex-1 overflow-y-auto bg-[var(--bg-page)] px-6 py-8 transition-colors duration-300">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
           <div className="flex flex-wrap items-center justify-end gap-3">
             <button 
               onClick={toggleTheme}
               title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-app-border bg-app-card px-3 py-2 text-sm font-medium text-app-secondary shadow-sm transition-colors hover:bg-app-muted"
             >
               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
             <button 
               onClick={fetchGrants}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-blue-900"
+              className="inline-flex items-center gap-2 rounded-lg border border-app-border bg-app-card px-3 py-2 text-sm font-medium text-app-secondary shadow-sm transition-colors hover:bg-app-muted hover:text-app-primary"
             >
               <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} /> 
               {isRefreshing ? 'Refreshing Data...' : 'Refresh Data'}
             </button>
             <button
               onClick={clearGrantData}
-              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 hover:text-red-700"
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-app-card px-3 py-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 size={14} />
               Clear Grant Data

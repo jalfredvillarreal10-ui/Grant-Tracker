@@ -36,7 +36,7 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-app-card shadow-2xl"
           >
             <div className="bg-[#002d62] p-4 flex justify-between items-center text-white">
               <h2 className="text-lg font-bold">Exit Interview: {grant.funderId}</h2>
@@ -52,12 +52,12 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase text-zinc-400">Primary Rejection Reason</label>
+                <label className="text-xs font-bold uppercase text-app-secondary-muted/80">Primary Rejection Reason</label>
                 <select
                   required
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value as NonNullable<Grant['rejectionReason']>)}
-                  className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-[#002d62]"
+                  className="rounded-lg border border-app-border bg-app-muted p-3 outline-none focus:border-[#002d62]"
                 >
                   <option value="" disabled>Select a reason...</option>
                   {rejectionReasons.map((reason) => (
@@ -67,13 +67,13 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase text-zinc-400">Reviewer Feedback Summary</label>
+                <label className="text-xs font-bold uppercase text-app-secondary-muted/80">Reviewer Feedback Summary</label>
                 <textarea
                   required
                   placeholder="Enter a brief summary of reviewer comments or internal findings..."
                   value={feedbackSummary}
                   onChange={(e) => setFeedbackSummary(e.target.value)}
-                  className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg outline-none focus:border-[#002d62] min-h-[120px] resize-none"
+                  className="min-h-[120px] resize-none rounded-lg border border-app-border bg-app-muted p-3 outline-none focus:border-[#002d62]"
                 />
               </div>
 
@@ -81,7 +81,7 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-3 px-4 rounded-lg font-bold text-zinc-600 border border-zinc-200 hover:bg-zinc-50 transition-colors"
+                  className="flex-1 rounded-lg border border-app-border px-4 py-3 font-bold text-app-secondary transition-colors hover:bg-app-muted"
                 >
                   Cancel
                 </button>

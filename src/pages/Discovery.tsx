@@ -260,38 +260,42 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   return (
     <div className="flex flex-col gap-6">
       <header className="mx-auto flex w-full max-w-6xl flex-col gap-2">
-        <h1 className="mb-1 text-3xl font-bold text-blue-900">Opportunity Search</h1>
-        <p className="max-w-3xl text-zinc-500">
+        <h1 className="mb-1 text-3xl font-bold text-app-primary">Opportunity Search</h1>
+        <p className="max-w-3xl text-app-secondary">
           Search the live federal database. Results are sorted by Close Date with the earliest close date at the top.
         </p>
       </header>
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-app-border bg-app-card p-5 shadow-sm">
           <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 md:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-[48%] text-zinc-400" />
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-[48%] text-app-secondary-muted/80" />
               <input
                 type="text"
                 placeholder="Search Grants.gov or leave blank to browse open and upcoming grants..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-3.5 pl-12 text-base text-zinc-700 outline-none transition-colors placeholder:text-zinc-400 focus:border-blue-900 focus:bg-white"
+                className="w-full rounded-xl border border-app-border bg-app-muted p-3.5 pl-12 text-base text-app-primary outline-none transition-colors placeholder:text-app-secondary-muted/80 focus:border-app-primary focus:bg-app-card"
               />
             </div>
-            <button type="submit" disabled={isSearching} className="btn-primary whitespace-nowrap px-8 md:self-stretch">
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="whitespace-nowrap rounded-xl bg-laredo-navy px-8 py-3 font-bold text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-80 md:self-stretch dark:bg-laredo-gold-new dark:text-black"
+            >
               {isSearching ? 'Searching...' : 'Search Grants'}
             </button>
           </form>
 
           {availableCategories.length > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-4">
-              <Filter className="h-4 w-4 text-zinc-400" />
-              <span className="text-sm font-bold uppercase tracking-wider text-zinc-500">Filter by Category</span>
+            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-app-border pt-4">
+              <Filter className="h-4 w-4 text-app-secondary-muted/80" />
+              <span className="text-sm font-bold uppercase tracking-wider text-app-secondary">Filter by Category</span>
               <select
                 value={selectedCategory}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="min-w-[220px] flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700 outline-none transition-colors hover:bg-zinc-100 focus:border-blue-900 md:max-w-xl"
+                className="min-w-[220px] flex-1 rounded-lg border border-app-border bg-app-muted px-3 py-2 text-sm font-medium text-app-primary outline-none transition-colors hover:bg-app-soft/50 focus:border-app-primary md:max-w-xl"
               >
                 <option value="All">All</option>
                 {availableCategories.map(category => (
@@ -300,7 +304,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                   </option>
                 ))}
               </select>
-              <span className="text-xs font-bold text-zinc-400 md:ml-auto">
+              <span className="text-xs font-bold text-app-secondary-muted/80 md:ml-auto">
                 {totalResults.toLocaleString()} total results
               </span>
             </div>
@@ -313,11 +317,11 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
           )}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-app-border bg-app-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wider text-zinc-600">
+                <tr className="border-b border-app-border bg-app-muted text-xs uppercase tracking-wider text-app-secondary">
                   <th className="w-32 p-4 font-bold">Close Date</th>
                   <th className="w-24 p-4 font-bold">Status</th>
                   <th className="p-4 font-bold">Title & Opportunity Number</th>
@@ -330,7 +334,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
               <tbody>
                 {searchResults.length === 0 && !isSearching ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center font-medium text-zinc-500">
+                    <td colSpan={7} className="p-8 text-center font-medium text-app-secondary">
                       No open or upcoming grants found for this filter.
                     </td>
                   </tr>
@@ -342,8 +346,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                     const isDetailsLoading = result.grants_gov_id ? loadingDetailIds.has(result.grants_gov_id) : false;
 
                     return (
-                      <tr key={idx} className="border-b border-zinc-100 transition-colors hover:bg-zinc-50">
-                        <td className="whitespace-nowrap p-4 align-top font-medium text-zinc-900">
+                      <tr key={idx} className="border-b border-app-border transition-colors hover:bg-app-muted">
+                        <td className="whitespace-nowrap p-4 align-top font-medium text-app-primary">
                           {formatDate(result.deadline)}
                         </td>
                         <td className="p-4 align-top">
@@ -358,22 +362,22 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                               : `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(result.grant_number)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mb-1 block cursor-pointer text-base font-bold leading-tight text-blue-700 hover:text-blue-900 hover:underline"
+                            className="mb-1 block cursor-pointer text-base font-bold leading-tight text-blue-700 hover:text-app-primary hover:underline"
                             title="View Official Opportunity Details"
                           >
                             {result.title}
                           </a>
-                          <div className="mt-1 text-xs font-medium text-zinc-500">
-                            <span className="font-bold text-zinc-700">Number:</span> {result.grant_number}
+                          <div className="mt-1 text-xs font-medium text-app-secondary">
+                            <span className="font-bold text-app-primary">Number:</span> {result.grant_number}
                           </div>
                         </td>
-                        <td className="p-4 align-top text-sm text-zinc-700">
+                        <td className="p-4 align-top text-sm text-app-primary">
                           {result.agency}
                         </td>
-                        <td className="whitespace-nowrap p-4 align-top text-sm font-semibold text-zinc-700">
+                        <td className="whitespace-nowrap p-4 align-top text-sm font-semibold text-app-primary">
                           {isDetailsLoading ? 'Loading...' : formatCurrency(opportunityDetails?.award_floor)}
                         </td>
-                        <td className="whitespace-nowrap p-4 align-top text-sm font-semibold text-zinc-700">
+                        <td className="whitespace-nowrap p-4 align-top text-sm font-semibold text-app-primary">
                           {isDetailsLoading ? 'Loading...' : formatCurrency(opportunityDetails?.award_ceiling)}
                         </td>
                         <td className="p-4 align-top text-center">
@@ -382,8 +386,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                             disabled={isSaved}
                             className={`flex w-full items-center justify-center gap-1 rounded-md px-3 py-2 text-xs font-bold uppercase transition-all ${
                               isSaved
-                                ? 'cursor-not-allowed bg-zinc-100 text-zinc-400'
-                                : 'border border-blue-900 bg-white text-blue-900 hover:bg-blue-900 hover:text-white'
+                                ? 'cursor-not-allowed bg-app-soft/50 text-app-secondary-muted/80'
+                                : 'border border-app-primary bg-app-card text-app-primary hover:bg-app-primary hover:text-white'
                             }`}
                           >
                             {isSaved ? (
@@ -402,8 +406,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-4 border-t border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className="text-sm font-medium text-zinc-500">
+            <div className="flex items-center justify-between gap-4 border-t border-app-border bg-app-muted px-4 py-3">
+              <div className="text-sm font-medium text-app-secondary">
                 Page {currentPage} of {totalPages} â€¢ Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, totalResults)} of {totalResults.toLocaleString()}
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -411,7 +415,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                   type="button"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1 || isSearching}
-                  className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-app-border bg-app-card px-3 py-2 text-sm font-semibold text-app-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Prev
                 </button>
@@ -423,8 +427,8 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                     disabled={isSearching}
                     className={`min-w-10 rounded-md border px-3 py-2 text-sm font-semibold ${
                       page === currentPage
-                        ? 'border-blue-900 bg-blue-900 text-white'
-                        : 'border-zinc-300 bg-white text-zinc-700'
+                        ? 'border-app-primary bg-app-primary text-white'
+                        : 'border-app-border bg-app-card text-app-primary'
                     } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
                     {page}
@@ -434,7 +438,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                   type="button"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages || isSearching}
-                  className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-app-border bg-app-card px-3 py-2 text-sm font-semibold text-app-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>

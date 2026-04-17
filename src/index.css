@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-laredo-navy: #002d62;
+  --color-laredo-navy-new: #003366;
+  --color-laredo-gold: #ffd700;
+  --color-laredo-gold-new: #ceaa79;
+  --color-laredo-gold-dark: #b8860b;
+  --color-laredo-white: #ffffff;
+  --color-laredo-light-gray: #f8f9fa;
+  --color-laredo-medium-gray: #e9ecef;
+  --color-laredo-dark-gray: #343a40;
+  --color-laredo-red: #c8102e;
+  --color-laredo-emerald: #059669;
+  --color-app-page: var(--bg-page);
+  --color-app-card: var(--bg-card);
+  --color-app-primary: var(--text-primary);
+  --color-app-secondary: var(--text-secondary);
+  --color-app-secondary-muted: var(--text-secondary);
+  --color-app-border: var(--border-color);
+  --color-app-muted: var(--input-bg);
+  --color-app-soft: var(--border-color);
+  --shadow-gold: 0 0 25px rgba(206, 170, 121, 0.5);
+}
+
 :root {
   --laredo-navy: #002d62;
   --laredo-navy-new: #003366;
@@ -63,94 +88,3 @@ body {
 * {
   box-sizing: border-box;
 }
-
-/* Brand helpers still referenced directly in JSX */
-.bg-laredo-navy-new { background-color: var(--laredo-navy-new); }
-.bg-laredo-gold-new { background-color: var(--laredo-gold-new); }
-.text-laredo-navy-new { color: var(--laredo-navy-new); }
-.text-laredo-gold-new { color: var(--laredo-gold-new); }
-.border-laredo-gold-new { border-color: var(--laredo-gold-new); }
-.border-laredo-gold-new\/20 { border-color: rgba(206, 170, 121, 0.2); }
-.hover\:border-laredo-gold-new\/35:hover { border-color: rgba(206, 170, 121, 0.35); }
-.shadow-gold { box-shadow: 0 0 25px rgba(206, 170, 121, 0.5); }
-
-.btn-primary {
-  background-color: var(--laredo-navy);
-  color: white;
-  border: none;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  font-weight: 700;
-  transition: filter 0.2s ease, transform 0.2s ease;
-}
-
-.btn-primary:hover {
-  filter: brightness(1.08);
-}
-
-.btn-primary:disabled {
-  cursor: wait;
-  opacity: 0.8;
-}
-
-[data-theme="dark"] .btn-primary {
-  background-color: var(--gold-accent);
-  color: #000;
-}
-
-.badge-premium {
-  background-color: var(--gold-accent);
-  color: var(--bg-sidebar);
-  border: 1px solid var(--gold-accent);
-  border-radius: 9999px;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.2rem 0.6rem;
-}
-
-.urgency-critical {
-  border: 2px solid var(--laredo-red) !important;
-  background-color: rgba(200, 16, 46, 0.05) !important;
-}
-
-.urgency-warning {
-  border-left: 6px solid var(--gold-accent) !important;
-}
-
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  background-color: var(--bg-page);
-  transition: background-color var(--transition-speed);
-}
-
-/* Theme-aware overrides for Tailwind utility colors used across the app */
-.text-blue-900 { color: var(--text-primary) !important; }
-.text-zinc-700 { color: var(--text-primary) !important; }
-.text-zinc-600 { color: var(--text-secondary) !important; }
-.text-zinc-500 { color: var(--text-secondary) !important; }
-.text-zinc-400 {
-  color: var(--text-secondary) !important;
-  opacity: 0.8;
-}
-
-.bg-white { background-color: var(--bg-card) !important; }
-.bg-zinc-50 { background-color: rgba(0, 0, 0, 0.02) !important; }
-.bg-zinc-100 {
-  background-color: var(--border-color) !important;
-  opacity: 0.5;
-}
-
-[data-theme="dark"] .bg-zinc-50 { background-color: rgba(255, 255, 255, 0.03) !important; }
-[data-theme="dark"] .bg-zinc-100 { opacity: 0.2; }
-
-.border-zinc-50 { border-color: var(--border-color) !important; opacity: 0.5; }
-.border-zinc-100 { border-color: var(--border-color) !important; }
-.border-zinc-200 { border-color: var(--border-color) !important; }

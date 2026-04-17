@@ -22,174 +22,104 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f4f4f4',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1rem',
-      fontFamily: 'sans-serif'
-    }}>
-      <motion.div 
+    <div className="flex min-h-screen items-center justify-center bg-app-page p-4">
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{
-          maxWidth: '900px',
-          width: '100%',
-          backgroundColor: 'white',
-          borderRadius: '24px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-          display: 'flex',
-          overflow: 'hidden',
-          minHeight: '550px'
-        }}
+        className="grid min-h-[550px] w-full max-w-[900px] overflow-hidden rounded-[24px] bg-app-card shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] md:grid-cols-2"
       >
-        {/* Left Side: Form */}
-        <div style={{ flex: 1, padding: '3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-              <div style={{ width: '32px', height: '32px', backgroundColor: '#002d62', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShieldCheck style={{ color: 'white', width: '20px', height: '20px', margin: '6px' }} />
+        <div className="flex flex-col justify-center p-8 md:p-12">
+          <div className="mb-8">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-laredo-navy text-white">
+                <ShieldCheck className="h-5 w-5" />
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#002d62', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Secure Gateway</span>
+              <span className="text-xs font-bold uppercase tracking-[0.1em] text-laredo-navy">Secure Gateway</span>
             </div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 300, color: '#18181b', margin: '0 0 0.5rem 0' }}>
-              Laredo <span style={{ fontWeight: 600, color: '#002d62' }}>Health Pulse</span>
+            <h1 className="mb-2 text-4xl font-light text-app-primary">
+              Laredo <span className="font-semibold text-laredo-navy">Health Pulse</span>
             </h1>
-            <p style={{ color: '#71717a', fontSize: '0.875rem' }}>Public Health Department Management Portal</p>
+            <p className="text-sm text-app-secondary">Public Health Department Management Portal</p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: '#a1a1aa', marginLeft: '0.25rem' }}>Department Email</label>
-              <div style={{ position: 'relative' }}>
-                <Mail style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa', width: '20px', height: '20px' }} />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="ml-1 text-xs font-semibold uppercase text-app-secondary-muted/70">Department Email</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-app-secondary-muted/70" />
                 <input
                   type="email"
                   required
                   placeholder="name@laredo.tx.us"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(null); }}
-                  style={{
-                    width: '100%',
-                    padding: '1rem 1rem 1rem 3rem',
-                    backgroundColor: '#f9f9f9',
-                    border: '1px solid #e4e4e7',
-                    borderRadius: '12px',
-                    fontSize: '1rem',
-                    outline: 'none'
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
                   }}
+                  className="w-full rounded-xl border border-app-border bg-app-muted px-4 py-4 pl-12 text-base text-app-primary outline-none transition-colors placeholder:text-app-secondary-muted/70 focus:border-laredo-navy focus:bg-app-card"
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: '#a1a1aa', marginLeft: '0.25rem' }}>Security Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#a1a1aa', width: '20px', height: '20px' }} />
+            <div className="flex flex-col gap-2">
+              <label className="ml-1 text-xs font-semibold uppercase text-app-secondary-muted/70">Security Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-app-secondary-muted/70" />
                 <input
                   type="password"
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '1rem 1rem 1rem 3rem',
-                    backgroundColor: '#f9f9f9',
-                    border: '1px solid #e4e4e7',
-                    borderRadius: '12px',
-                    fontSize: '1rem',
-                    outline: 'none'
-                  }}
+                  className="w-full rounded-xl border border-app-border bg-app-muted px-4 py-4 pl-12 text-base text-app-primary outline-none transition-colors placeholder:text-app-secondary-muted/70 focus:border-laredo-navy focus:bg-app-card"
                 />
               </div>
             </div>
 
             <AnimatePresence>
               {error && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  style={{ color: '#c8102e', fontSize: '0.875rem', fontWeight: 500 }}
+                  className="text-sm font-medium text-red-700"
                 >
                   {error}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <button type="submit" style={{
-              width: '100%',
-              backgroundColor: '#002d62',
-              color: 'white',
-              padding: '1rem',
-              borderRadius: '12px',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              marginTop: '1rem',
-              transition: 'background 0.2s'
-            }}>
-              Access Portal <ArrowRight style={{ width: '20px', height: '20px' }} />
+            <button
+              type="submit"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-laredo-navy px-4 py-4 text-base font-semibold text-white transition hover:brightness-110"
+            >
+              Access Portal <ArrowRight className="h-5 w-5" />
             </button>
           </form>
 
-          <p style={{ marginTop: '2rem', fontSize: '0.75rem', color: '#a1a1aa', textAlign: 'center' }}>
+          <p className="mt-8 text-center text-xs text-app-secondary-muted/70">
             Authorized Personnel Only. Restricted Access.
           </p>
         </div>
 
-        {/* Right Side: Branding */}
-        <div style={{ 
-          flex: 1, 
-          backgroundColor: '#002d62', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          justifyContent: 'flex-end',
-          padding: '3rem',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {/* Abstract background pattern */}
-          <div style={{
-            position: 'absolute',
-            top: '-10%',
-            right: '-10%',
-            width: '100%',
-            height: '100%',
-            background: 'radial-gradient(circle, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0) 70%)',
-            pointerEvents: 'none'
-          }} />
+        <div className="relative flex flex-col justify-end overflow-hidden bg-laredo-navy p-8 md:p-12">
+          <div className="pointer-events-none absolute -right-[10%] -top-[10%] h-full w-full bg-[radial-gradient(circle,rgba(255,215,0,0.1)_0%,rgba(0,0,0,0)_70%)]" />
 
-          {/* Centered Logo Container */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-            <div style={{
-              borderRadius: '1rem', // rounded-2xl
-              overflow: 'hidden',
-              border: '2px solid #C5B358',
-              boxShadow: '0px 8px 24px rgba(0,0,0,0.3)',
-              display: 'flex'
-            }}>
-              <img 
-                src={logo} 
-                alt="Laredo Public Health Logo" 
-                style={{ maxWidth: '300px', width: '100%', display: 'block' }} 
+          <div className="relative z-10 flex flex-1 items-center justify-center">
+            <div className="overflow-hidden rounded-2xl border-2 border-[#C5B358] shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
+              <img
+                src={logo}
+                alt="Laredo Public Health Logo"
+                className="block w-full max-w-[300px]"
               />
             </div>
           </div>
-          
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <h2 style={{ fontSize: '1.75rem', color: 'white', fontWeight: 300, margin: '0 0 1rem 0' }}>
-              High-Security <span style={{ fontWeight: 600, color: '#ffd700' }}>Grant Lifecycle</span> Management
+
+          <div className="relative z-10">
+            <h2 className="mb-4 text-[1.75rem] font-light text-white">
+              High-Security <span className="font-semibold text-laredo-gold">Grant Lifecycle</span> Management
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', maxWidth: '300px' }}>
+            <p className="max-w-[300px] text-sm text-white/60">
               Dedicated tools for tracking high-value healthcare funding opportunities for the City of Laredo.
             </p>
           </div>

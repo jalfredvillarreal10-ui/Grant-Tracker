@@ -50,8 +50,8 @@ const archivedGrants = grants
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '3rem' }}>
       <header>
-        <h1 className="text-3xl font-bold text-blue-900">Application Lifecycle</h1>
-        <p className="text-zinc-500">Monitoring submitted applications and pending decisions.</p>
+        <h1 className="text-3xl font-bold text-app-primary">Application Lifecycle</h1>
+        <p className="text-app-secondary">Monitoring submitted applications and pending decisions.</p>
       </header>
 
       <div style={{ width: '100%', maxWidth: '52rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -65,7 +65,7 @@ const archivedGrants = grants
       </div>
 
       {activeGrants.length === 0 && (
-        <div className="p-12 text-center bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400">
+        <div className="rounded-2xl border-2 border-dashed border-app-border bg-app-muted p-12 text-center text-app-secondary-muted/80">
           No active applications. Move a grant from Discovery to start tracking.
         </div>
       )}
@@ -150,21 +150,21 @@ const archivedGrants = grants
 
       {selectedFeedback && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md overflow-hidden rounded-2xl bg-app-card shadow-2xl">
             <div className="bg-zinc-800 p-4 flex justify-between items-center text-white">
               <h2 className="text-lg font-bold flex items-center gap-2"><MessageSquare size={20} /> Funder Feedback</h2>
               <button onClick={() => setSelectedFeedback(null)} className="text-white/80 hover:text-white">Close</button>
             </div>
             <div className="p-6 flex flex-col gap-4">
               <div>
-                <span className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Reason for Rejection</span>
+                <span className="mb-1 block text-[10px] font-bold uppercase text-app-secondary-muted/80">Reason for Rejection</span>
                 <div className="p-3 bg-red-50 text-red-900 rounded-lg font-bold border border-red-100">
                   {selectedFeedback.rejectionReason}
                 </div>
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Feedback Summary</span>
-                <p className="text-sm text-zinc-600 bg-zinc-50 p-4 rounded-lg border border-zinc-100 italic">
+                <span className="mb-1 block text-[10px] font-bold uppercase text-app-secondary-muted/80">Feedback Summary</span>
+                <p className="rounded-lg border border-app-border bg-app-muted p-4 text-sm italic text-app-secondary">
                   "{selectedFeedback.feedbackSummary}"
                 </p>
               </div>

@@ -28,7 +28,7 @@ const CloseoutChecklistModal: React.FC<CloseoutChecklistModalProps> = ({ grant, 
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
-            className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl bg-app-card shadow-2xl"
           >
             <div className="flex items-center justify-between bg-[#002d62] p-4 text-white">
               <div>

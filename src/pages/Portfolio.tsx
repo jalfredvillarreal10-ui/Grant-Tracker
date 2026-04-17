@@ -66,13 +66,14 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
     <div className="flex flex-col gap-8">
       <header>
         <div>
-          <h1 className="text-3xl font-bold text-blue-900">Awarded Grants Portfolio</h1>
-          <p className="text-zinc-500">Active management of secured funds and departmental priority assets.</p>
+          <h1 className="text-3xl font-bold text-app-primary">Awarded Grants Portfolio</h1>
+          <p className="text-app-secondary">Active management of secured funds and departmental priority assets.</p>
         </div>
       </header>
 
-      <div className="flex items-center gap-4 bg-white p-2 rounded-xl shadow-sm border border-zinc-100 self-start">
-        <div className="flex items-center gap-2 px-3 text-zinc-400">
+      <div className="self-start rounded-xl border border-app-border bg-app-card p-2 shadow-sm">
+        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 px-3 text-app-secondary-muted/80">
           <Filter size={16} />
           <span className="text-xs font-bold uppercase">View:</span>
         </div>
@@ -80,14 +81,15 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
           <select 
             value={filter}
             onChange={(e) => setFilter(e.target.value as PortfolioFilter)}
-            className="appearance-none bg-zinc-50 border-none py-2 pl-4 pr-10 rounded-lg text-sm font-bold text-blue-900 cursor-pointer outline-none focus:ring-2 focus:ring-blue-100"
+            className="appearance-none rounded-lg bg-app-muted py-2 pl-4 pr-10 text-sm font-bold text-app-primary cursor-pointer outline-none focus:ring-2 focus:ring-blue-100"
           >
             <option value="active">All Active Awards</option>
             <option value="recent">Recently Awarded (90 Days)</option>
             <option value="extension">Under Extension</option>
             <option value="closed">Successfully Closed</option>
           </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -transform -translate-y-1/2 text-blue-900 pointer-events-none" />
+          <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-app-primary" />
+        </div>
         </div>
       </div>
 
@@ -108,7 +110,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
       </div>
 
       {filteredGrants.length === 0 && (
-        <div className="p-12 text-center bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400">
+        <div className="rounded-2xl border-2 border-dashed border-app-border bg-app-muted p-12 text-center text-app-secondary-muted/80">
           No records found for the selected filter.
         </div>
       )}

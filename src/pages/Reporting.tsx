@@ -185,11 +185,9 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
           </h1>
         </div>
         <button
-          className="btn-primary flex items-center gap-2"
+          className="flex items-center gap-2 rounded-[0.9rem] bg-laredo-navy px-[1.35rem] py-[0.9rem] font-bold text-white transition hover:brightness-110 dark:bg-laredo-gold-new dark:text-black"
           onClick={() => handleExportExcel(filteredGrants)}
           style={{
-            padding: '0.9rem 1.35rem',
-            borderRadius: '0.9rem',
             boxShadow: '0 18px 30px rgba(0, 45, 98, 0.16)',
           }}
         >
