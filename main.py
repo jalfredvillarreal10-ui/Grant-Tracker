@@ -26,55 +26,79 @@ app.add_middleware(
 # 2. DATABASE SETUP
 DB_FILE = "grants.db"
 
+GRANT_TABLE_COLUMNS_SQL = '''
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grant_number TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    agency TEXT NOT NULL,
+    deadline DATE NOT NULL,
+    amount INTEGER DEFAULT 0,
+    award_floor INTEGER,
+    award_ceiling INTEGER,
+    status TEXT DEFAULT 'available',
+    submission_date DATE,
+    expected_notification_date DATE,
+    poc_name TEXT,
+    poc_email TEXT,
+    internal_lead TEXT,
+    application_status TEXT,
+    rejection_reason TEXT,
+    feedback_summary TEXT,
+    denial_date DATE,
+    expiration_date DATE,
+    spent_amount INTEGER DEFAULT 0,
+    compliance_category TEXT,
+    program_manager TEXT,
+    next_report_due DATE,
+    onboarding_date DATE,
+    is_extended BOOLEAN DEFAULT 0,
+    renewal_status TEXT DEFAULT 'None',
+    funder_portal_url TEXT,
+    grants_gov_id TEXT
+'''
+
+GRANT_MUTABLE_COLUMNS = (
+    "grant_number", "title", "agency", "deadline", "amount", "award_floor", "award_ceiling",
+    "status", "submission_date", "expected_notification_date", "poc_name", "poc_email",
+    "internal_lead", "application_status", "rejection_reason", "feedback_summary",
+    "denial_date", "expiration_date", "spent_amount", "compliance_category",
+    "program_manager", "next_report_due", "onboarding_date", "is_extended",
+    "renewal_status", "funder_portal_url", "grants_gov_id"
+)
+
+
+def _ensure_grant_table_columns(cursor: sqlite3.Cursor, table_name: str):
+    existing_columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()}
+    if "poc_name" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN poc_name TEXT")
+    if "poc_email" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN poc_email TEXT")
+    if "award_floor" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN award_floor INTEGER")
+    if "award_ceiling" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN award_ceiling INTEGER")
+    if "funder_portal_url" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN funder_portal_url TEXT")
+    if "grants_gov_id" not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN grants_gov_id TEXT")
+
+
+def _insert_grant_record(cursor: sqlite3.Cursor, table_name: str, grant):
+    placeholders = ", ".join(["?"] * len(GRANT_MUTABLE_COLUMNS))
+    cursor.execute(f'''
+        INSERT INTO {table_name} ({", ".join(GRANT_MUTABLE_COLUMNS)})
+        VALUES ({placeholders})
+    ''', tuple(getattr(grant, column) for column in GRANT_MUTABLE_COLUMNS))
+
+
 def init_db():
     """Initializes the SQLite database and creates the grants table if it doesn't exist."""
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS grants (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                grant_number TEXT UNIQUE NOT NULL,
-                title TEXT NOT NULL,
-                agency TEXT NOT NULL,
-                deadline DATE NOT NULL,
-                amount INTEGER DEFAULT 0,
-                award_floor INTEGER,
-                award_ceiling INTEGER,
-                status TEXT DEFAULT 'available',
-                submission_date DATE,
-                expected_notification_date DATE,
-                poc_name TEXT,
-                poc_email TEXT,
-                internal_lead TEXT,
-                application_status TEXT,
-                rejection_reason TEXT,
-                feedback_summary TEXT,
-                denial_date DATE,
-                expiration_date DATE,
-                spent_amount INTEGER DEFAULT 0,
-                compliance_category TEXT,
-                program_manager TEXT,
-                next_report_due DATE,
-                onboarding_date DATE,
-                is_extended BOOLEAN DEFAULT 0,
-                renewal_status TEXT DEFAULT 'None',
-                funder_portal_url TEXT,
-                grants_gov_id TEXT
-            )
-        ''')
-        existing_columns = {row[1] for row in cursor.execute("PRAGMA table_info(grants)").fetchall()}
-        if "poc_name" not in existing_columns:
-            cursor.execute("ALTER TABLE grants ADD COLUMN poc_name TEXT")
-        if "poc_email" not in existing_columns:
-            cursor.execute("ALTER TABLE grants ADD COLUMN poc_email TEXT")
-        if "award_floor" not in existing_columns:
-            cursor.execute("ALTER TABLE grants ADD COLUMN award_floor INTEGER")
-        if "award_ceiling" not in existing_columns:
-            cursor.execute("ALTER TABLE grants ADD COLUMN award_ceiling INTEGER")
-        if "funder_portal_url" not in existing_columns:
-            cursor.execute("ALTER TABLE grants ADD COLUMN funder_portal_url TEXT")
-        if "grants_gov_id" not in existing_columns:
-            cursor.execute("ALTER TABLE grants ADD COLUMN grants_gov_id TEXT")
+        cursor.execute(f'CREATE TABLE IF NOT EXISTS grants ({GRANT_TABLE_COLUMNS_SQL})')
+        cursor.execute(f'CREATE TABLE IF NOT EXISTS favorites ({GRANT_TABLE_COLUMNS_SQL})')
+        _ensure_grant_table_columns(cursor, "grants")
+        _ensure_grant_table_columns(cursor, "favorites")
         conn.commit()
 
 # Run database initialization on startup when I get it working
@@ -135,6 +159,15 @@ def get_all_grants(conn: sqlite3.Connection = Depends(get_db_connection)):
     return [dict(grant) for grant in grants]
 
 
+@app.get("/api/favorites", response_model=List[GrantResponse])
+def get_all_favorites(conn: sqlite3.Connection = Depends(get_db_connection)):
+    """Fetch all favorite grants, ordered by the soonest deadline."""
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM favorites ORDER BY deadline ASC')
+    favorites = cursor.fetchall()
+    return [dict(grant) for grant in favorites]
+
+
 @app.delete("/api/grants", response_model=dict)
 def delete_all_grants(conn: sqlite3.Connection = Depends(get_db_connection)):
     """Delete all tracked grants from the database."""
@@ -148,26 +181,42 @@ def create_grant(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_con
     """Save a new grant to the database."""
     try:
         cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO grants (
-                grant_number, title, agency, deadline, amount, award_floor, award_ceiling, status, submission_date, expected_notification_date,
-                poc_name, poc_email, internal_lead, application_status, rejection_reason, feedback_summary,
-                denial_date, expiration_date, spent_amount, compliance_category, program_manager,
-                next_report_due, onboarding_date, is_extended, renewal_status, funder_portal_url, grants_gov_id
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            grant.grant_number, grant.title, grant.agency, grant.deadline, grant.amount, grant.award_floor, grant.award_ceiling, grant.status,
-            grant.submission_date, grant.expected_notification_date, grant.poc_name, grant.poc_email,
-            grant.internal_lead, grant.application_status, grant.rejection_reason, grant.feedback_summary,
-            grant.denial_date, grant.expiration_date, grant.spent_amount, grant.compliance_category,
-            grant.program_manager, grant.next_report_due, grant.onboarding_date, grant.is_extended,
-            grant.renewal_status, grant.funder_portal_url, grant.grants_gov_id
-        ))
+        _insert_grant_record(cursor, "grants", grant)
+        cursor.execute('DELETE FROM favorites WHERE grant_number = ?', (grant.grant_number,))
         conn.commit()
         return {"message": "Grant added successfully", "grant_number": grant.grant_number}
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="A grant with this number already exists.")
+
+
+@app.post("/api/favorites", response_model=dict)
+def create_favorite(grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_connection)):
+    """Save a new grant lead to the favorites table."""
+    try:
+        cursor = conn.cursor()
+        tracked_grant = cursor.execute(
+            'SELECT 1 FROM grants WHERE grant_number = ?',
+            (grant.grant_number,)
+        ).fetchone()
+        if tracked_grant:
+            raise HTTPException(status_code=400, detail="Tracked grants cannot also be favorited.")
+
+        _insert_grant_record(cursor, "favorites", grant)
+        conn.commit()
+        return {"message": "Favorite added successfully", "grant_number": grant.grant_number}
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="A favorite with this number already exists.")
+
+
+@app.delete("/api/favorites/{grant_number}", response_model=dict)
+def delete_favorite(grant_number: str, conn: sqlite3.Connection = Depends(get_db_connection)):
+    """Remove a grant from the favorites list."""
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM favorites WHERE grant_number = ?', (grant_number,))
+    conn.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Favorite not found.")
+    return {"message": "Favorite removed successfully", "grant_number": grant_number}
 
 @app.put("/api/grants/{grant_id}", response_model=dict)
 def update_grant(grant_id: int, grant: GrantBase, conn: sqlite3.Connection = Depends(get_db_connection)):
