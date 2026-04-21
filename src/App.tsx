@@ -40,6 +40,8 @@ type BackendGrant = {
   grants_gov_id?: string | null;
 };
 
+type FavoriteGrant = BackendGrant;
+
 function optionalString(value?: string | null) {
   return value ?? undefined;
 }
@@ -49,15 +51,98 @@ type OpportunityDetailsResponse = {
   award_ceiling?: number | null;
 };
 
+type NotificationRunResult = {
+  checked_on: string;
+  notifications_sent: number;
+  archived_count: number;
+  duplicates_skipped?: number;
+  notifications: Array<{
+    grant_id: number;
+    grant_number: string;
+    title: string;
+    status_before_update: string;
+    expiration_date: string;
+    days_until_expiration: number;
+    notice_type: string;
+    recipients: string[];
+    subject: string;
+    body: string;
+    archived: boolean;
+  }>;
+};
+
+type NotificationHistoryItem = {
+  id: number;
+  grant_id: number;
+  grant_number: string;
+  title: string;
+  notice_type: string;
+  recipients: string[];
+  subject: string;
+  body: string;
+  expiration_date?: string | null;
+  days_until_expiration: number;
+  archived: boolean;
+  sent_on: string;
+  sent_at: string;
+};
+
 const AUTH_STORAGE_KEY = 'lhgp-auth-email';
+
+function differenceInDaysFromToday(value?: string) {
+  if (!value) return null;
+
+  const today = new Date()
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  const target = new Date(`${value}T00:00:00`)
+
+  if (Number.isNaN(target.getTime())) {
+    return null
+  }
+
+  const targetUtc = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate())
+  return Math.round((targetUtc - todayUtc) / 86400000)
+}
+
+function formatShortDate(value?: string) {
+  if (!value) return 'No date'
+
+  const parsed = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(parsed)
+}
+
+function getPrimaryNotificationDate(grant: Grant) {
+  if (grant.status === 'approved') {
+    return grant.expirationDate
+  }
+
+  if (grant.status === 'available' || grant.status === 'applied') {
+    return grant.deadline
+  }
+
+  return undefined
+}
 
 function App() {
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem(AUTH_STORAGE_KEY) || '')
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem(AUTH_STORAGE_KEY)))
   const [activePage, setActivePage] = useState<Page>('discovery')
   const [grants, setGrants] = useState<Grant[]>([])
+  const [favoriteGrants, setFavoriteGrants] = useState<Grant[]>([])
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [isNotificationJobRunning, setIsNotificationJobRunning] = useState(false)
+  const [notificationRunResult, setNotificationRunResult] = useState<NotificationRunResult | null>(null)
+  const [notificationError, setNotificationError] = useState('')
+  const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryItem[]>([])
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
   })
@@ -282,6 +367,8 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchGrants();
+      fetchNotificationHistory()
+      fetchFavorites()
     }
   }, [isAuthenticated]);
 
@@ -314,6 +401,92 @@ function App() {
     } catch (error) {
       console.error('Failed to clear grant data:', error)
       window.alert('Failed to clear grant data.')
+    }
+  }
+
+  const triggerNotificationCheck = async () => {
+    setIsNotificationJobRunning(true)
+    setNotificationError('')
+
+    try {
+      const response = await fetch('http://localhost:8000/api/notifications/expiration-check', {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to run notification check')
+      }
+
+      const result: NotificationRunResult = await response.json()
+      setNotificationRunResult(result)
+      await fetchGrants()
+      await fetchNotificationHistory()
+      await fetchFavorites()
+    } catch (error) {
+      console.error('Failed to run notification check:', error)
+      setNotificationError('Notification check failed. Confirm the FastAPI server is running and APScheduler is installed.')
+    } finally {
+      setIsNotificationJobRunning(false)
+    }
+  }
+
+  const fetchNotificationHistory = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/notifications/history')
+      if (!response.ok) {
+        throw new Error('Failed to fetch notification history')
+      }
+
+      const history: NotificationHistoryItem[] = await response.json()
+      setNotificationHistory(history)
+    } catch (error) {
+      console.error('Failed to fetch notification history:', error)
+    }
+  }
+
+  const fetchFavorites = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/favorites')
+      if (!response.ok) {
+        throw new Error('Failed to fetch favorites')
+      }
+
+      const dbFavorites: FavoriteGrant[] = await response.json()
+      const mappedFavorites: Grant[] = dbFavorites.map((g) => ({
+        id: `favorite-${g.id}`,
+        funderId: g.grant_number,
+        title: g.title,
+        source: g.agency,
+        amount: g.amount || 0,
+        awardFloor: g.award_floor ?? undefined,
+        awardCeiling: g.award_ceiling ?? undefined,
+        status: g.status,
+        deadline: optionalString(g.deadline),
+        submissionDate: optionalString(g.submission_date),
+        expectedNotificationDate: optionalString(g.expected_notification_date),
+        pocName: optionalString(g.poc_name),
+        pocEmail: optionalString(g.poc_email),
+        internalLead: optionalString(g.internal_lead),
+        applicationStatus: g.application_status,
+        rejectionReason: g.rejection_reason,
+        feedbackSummary: optionalString(g.feedback_summary),
+        denialDate: optionalString(g.denial_date),
+        expirationDate: optionalString(g.expiration_date),
+        spentAmount: g.spent_amount || 0,
+        remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
+        complianceCategory: g.compliance_category,
+        programManager: optionalString(g.program_manager),
+        nextReportDue: optionalString(g.next_report_due),
+        onboardingDate: optionalString(g.onboarding_date),
+        isExtended: !!g.is_extended,
+        renewalStatus: g.renewal_status || 'None',
+        funderPortalUrl: optionalString(g.funder_portal_url),
+        grantsGovId: optionalString(g.grants_gov_id),
+      }))
+
+      setFavoriteGrants(mappedFavorites)
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error)
     }
   }
 
@@ -424,6 +597,43 @@ function App() {
     }
   }
 
+  const pipelineDeadlineGrants = [...grants, ...favoriteGrants]
+    .map((grant) => ({
+      grant,
+      daysUntilEvent: differenceInDaysFromToday(grant.deadline),
+    }))
+    .filter(
+      (item) =>
+        (item.grant.status === 'available' || item.grant.status === 'applied') &&
+        item.daysUntilEvent != null &&
+        item.daysUntilEvent <= 7
+    )
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.grant.funderId === item.grant.funderId) === index)
+    .sort((a, b) => (a.daysUntilEvent ?? 9999) - (b.daysUntilEvent ?? 9999))
+
+  const awardExpirationGrants = grants
+    .map((grant) => ({
+      grant,
+      daysUntilEvent: differenceInDaysFromToday(grant.expirationDate),
+    }))
+    .filter(
+      (item) =>
+        item.grant.status === 'approved' &&
+        item.daysUntilEvent != null &&
+        item.daysUntilEvent <= 7
+    )
+    .sort((a, b) => (a.daysUntilEvent ?? 9999) - (b.daysUntilEvent ?? 9999))
+
+  const actionableNotificationGrants = awardExpirationGrants.filter(({ daysUntilEvent }) =>
+    daysUntilEvent != null && (daysUntilEvent === 7 || daysUntilEvent === 1 || daysUntilEvent <= 0)
+  )
+
+  const watchlistGrants = awardExpirationGrants.filter(({ daysUntilEvent }) =>
+    daysUntilEvent != null && daysUntilEvent < 7 && daysUntilEvent > 1
+  )
+
+  const notificationBadgeCount = actionableNotificationGrants.length
+
   if (!isAuthenticated) return <Login onLogin={handleLogin} />
 
   return (
@@ -448,12 +658,234 @@ function App() {
                   <Bell size={15} />
                   Notifications
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-laredo-gold px-1.5 text-[9px] text-black">
-                    0
+                    {notificationBadgeCount}
                   </span>
                   <ChevronDown size={14} />
                 </button>
                 {isNotificationsOpen && (
-                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 h-40 w-72 rounded-xl border border-app-border bg-app-card shadow-xl" />
+                  <div className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[26rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-slate-900 shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+                    <div className="border-b border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_100%)] px-5 py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+                            Notification Center
+                          </div>
+                          <div className="mt-1 text-base font-bold text-slate-900">
+                            {notificationBadgeCount} active award alert{notificationBadgeCount === 1 ? '' : 's'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={triggerNotificationCheck}
+                          disabled={isNotificationJobRunning}
+                          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-laredo-gold-new px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-laredo-navy-new shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <RefreshCw size={13} className={isNotificationJobRunning ? 'animate-spin' : ''} />
+                          {isNotificationJobRunning ? 'Running' : 'Run Check'}
+                        </button>
+                      </div>
+                      <div className="mt-4 grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
+                          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Deadlines</div>
+                          <div className="mt-1 text-lg font-bold text-slate-900">{pipelineDeadlineGrants.length}</div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
+                          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Alerts</div>
+                          <div className="mt-1 text-lg font-bold text-slate-900">{actionableNotificationGrants.length}</div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
+                          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">History</div>
+                          <div className="mt-1 text-lg font-bold text-slate-900">{notificationHistory.length}</div>
+                        </div>
+                      </div>
+                      {notificationError && (
+                        <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                          {notificationError}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="max-h-[34rem] overflow-y-auto px-5 py-4">
+                      <div className="space-y-5">
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                              Application Deadlines
+                            </h3>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                              {pipelineDeadlineGrants.length}
+                            </span>
+                          </div>
+                          {pipelineDeadlineGrants.length === 0 ? (
+                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              No available or applied grants are within 7 days of their deadline.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {pipelineDeadlineGrants.map(({ grant, daysUntilEvent }) => (
+                                <div key={`${grant.id}-pipeline`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                  <div className="text-sm font-semibold leading-5 text-slate-900">{grant.title}</div>
+                                  <div className="mt-1 text-xs leading-5 text-slate-600">
+                                    {grant.id.startsWith('favorite-')
+                                      ? 'Favorited Grant'
+                                      : grant.status === 'applied'
+                                      ? 'Applied Grant'
+                                      : 'Available Grant'}
+                                    {' - '}
+                                    Closes {formatShortDate(grant.deadline)}
+                                    {' - '}
+                                    {daysUntilEvent != null && daysUntilEvent > 0
+                                      ? `${daysUntilEvent} day${daysUntilEvent === 1 ? '' : 's'} left`
+                                      : 'due now'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                              Award Expiration Alerts
+                            </h3>
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
+                              {actionableNotificationGrants.length}
+                            </span>
+                          </div>
+                          {actionableNotificationGrants.length === 0 ? (
+                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              No approved grants are currently at the 7-day, 1-day, or due-now thresholds.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {actionableNotificationGrants.map(({ grant, daysUntilEvent }) => (
+                                <div key={grant.id} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="text-sm font-semibold leading-5 text-slate-900">{grant.title}</div>
+                                    <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
+                                      {daysUntilEvent != null && daysUntilEvent <= 0
+                                        ? 'Termination'
+                                        : daysUntilEvent === 1
+                                        ? 'Final'
+                                        : 'Reminder'}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 text-xs leading-5 text-slate-600">
+                                    Expires {formatShortDate(getPrimaryNotificationDate(grant))}
+                                    {' - '}
+                                    {daysUntilEvent != null && daysUntilEvent > 0
+                                      ? `${daysUntilEvent} day${daysUntilEvent === 1 ? '' : 's'} left`
+                                      : 'due now'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                              Award Expiration Watchlist
+                            </h3>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                              {watchlistGrants.length}
+                            </span>
+                          </div>
+                          {watchlistGrants.length === 0 ? (
+                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              No approved grants are inside 6 to 2 days remaining.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {watchlistGrants.map(({ grant, daysUntilEvent }) => (
+                                <div key={`${grant.id}-watch`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                  <div className="text-sm font-semibold leading-5 text-slate-900">{grant.title}</div>
+                                  <div className="mt-1 text-xs leading-5 text-slate-600">
+                                    Expires {formatShortDate(getPrimaryNotificationDate(grant))}
+                                    {' - '}
+                                    {daysUntilEvent} day{daysUntilEvent === 1 ? '' : 's'} left
+                                    {' - '}
+                                    Monitoring only
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                              Last Manual Run
+                            </h3>
+                          </div>
+                          {!notificationRunResult ? (
+                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              Run the check to inspect the backend decision output here.
+                            </p>
+                          ) : notificationRunResult.notifications.length === 0 ? (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600">
+                              Checked on {formatShortDate(notificationRunResult.checked_on)}. No new emails were triggered.
+                              {(notificationRunResult.duplicates_skipped ?? 0) > 0 && (
+                                <span> {notificationRunResult.duplicates_skipped} duplicate trigger{notificationRunResult.duplicates_skipped === 1 ? '' : 's'} were skipped.</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {notificationRunResult.notifications.map((item) => (
+                                <div key={`${item.grant_id}-${item.notice_type}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="text-sm font-semibold text-slate-900">{item.notice_type}</div>
+                                    {item.archived && (
+                                      <span className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-red-700">
+                                        Archived
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="mt-1 text-sm text-slate-900">{item.title}</div>
+                                  <div className="mt-1 text-xs leading-5 text-slate-600">{item.subject}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                              Sent History
+                            </h3>
+                          </div>
+                          {notificationHistory.length === 0 ? (
+                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                              No persisted notifications yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {notificationHistory.slice(0, 10).map((item) => (
+                                <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="text-sm font-semibold text-slate-900">{item.notice_type}</div>
+                                    <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                                      {formatShortDate(item.sent_on)}
+                                    </div>
+                                  </div>
+                                  <div className="mt-1 text-sm text-slate-900">{item.title}</div>
+                                  <div className="mt-1 text-xs leading-5 text-slate-600">
+                                    Expires {formatShortDate(item.expiration_date ?? undefined)}
+                                    {' - '}
+                                    Sent to {item.recipients.join(', ')}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
               <button
@@ -544,3 +976,4 @@ function App() {
 }
 
 export default App
+

@@ -1,4 +1,35 @@
-# Project Description: Laredo Health Grant Pulse (LHGP)
+# Laredo Health Grant Pulse (LHGP)
+
+## Setup
+
+### Prerequisites
+
+- Node.js 20+ with `npm`
+- Python 3.11+ with `pip`
+
+#### Frontend
+
+```powershell
+npm install
+```
+
+#### Backend
+
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt``
+
+If `py` is not available on the machine, use:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+
+## Project Description
+
 Project Name: Laredo Health Grant Pulse (LHGP)
 Target User: City of Laredo Public Health Department Administration
 Core Purpose: A segmented, high-security management portal designed to identify, track, and secure high-value healthcare funding opportunities through a focused lifecycle approach.

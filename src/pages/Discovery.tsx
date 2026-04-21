@@ -473,7 +473,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                 : 'text-app-secondary hover:bg-app-muted'
             }`}
           >
-            Tracked
+            Tracking
             <span className="ml-2 rounded-full bg-black/10 px-2 py-0.5 text-[11px]">
               {trackedGrants.length}
             </span>
