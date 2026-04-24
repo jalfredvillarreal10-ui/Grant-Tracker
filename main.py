@@ -2,6 +2,7 @@ import os
 import sqlite3
 import requests
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -92,6 +93,16 @@ NOTIFICATION_LOG_TABLE_COLUMNS_SQL = '''
     UNIQUE(grant_id, notice_type, sent_on)
 '''
 
+DISCOVERY_AWARD_CACHE_TABLE_COLUMNS_SQL = '''
+    opportunity_id TEXT PRIMARY KEY,
+    grant_number TEXT,
+    title TEXT,
+    agency TEXT,
+    award_floor INTEGER,
+    award_ceiling INTEGER,
+    fetched_at TEXT NOT NULL
+'''
+
 
 def _ensure_grant_table_columns(cursor: sqlite3.Cursor, table_name: str):
     existing_columns = {row[1] for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()}
@@ -124,6 +135,7 @@ def init_db():
         cursor.execute(f'CREATE TABLE IF NOT EXISTS grants ({GRANT_TABLE_COLUMNS_SQL})')
         cursor.execute(f'CREATE TABLE IF NOT EXISTS favorites ({GRANT_TABLE_COLUMNS_SQL})')
         cursor.execute(f'CREATE TABLE IF NOT EXISTS notification_log ({NOTIFICATION_LOG_TABLE_COLUMNS_SQL})')
+        cursor.execute(f'CREATE TABLE IF NOT EXISTS discovery_award_cache ({DISCOVERY_AWARD_CACHE_TABLE_COLUMNS_SQL})')
         _ensure_grant_table_columns(cursor, "grants")
         _ensure_grant_table_columns(cursor, "favorites")
         conn.commit()
@@ -592,9 +604,7 @@ def _parse_grants_gov_currency(raw_value) -> Optional[int]:
         return None
 
 
-@app.get("/api/grantsgov/opportunity/{opportunity_id}")
-def fetch_grants_gov_opportunity(opportunity_id: str):
-    """Fetch detailed opportunity data, including award ceiling/floor, from Grants.gov."""
+def _fetch_grants_gov_opportunity_details(opportunity_id: str):
     url = "https://api.grants.gov/v1/api/fetchOpportunity"
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -602,29 +612,32 @@ def fetch_grants_gov_opportunity(opportunity_id: str):
     }
     payload = {"opportunityId": opportunity_id}
 
+    response = requests.post(url, json=payload, headers=headers, timeout=10)
+    if not response.ok:
+        raise HTTPException(status_code=500, detail="Grants.gov rejected detail request.")
+
+    json_response = response.json()
+    if json_response.get("errorcode") != 0:
+        raise HTTPException(status_code=500, detail="Grants.gov opportunity detail returned an error.")
+
+    data = json_response.get("data") or {}
+    synopsis = data.get("synopsis") or {}
+
+    return {
+        "opportunity_id": data.get("id") or opportunity_id,
+        "grant_number": data.get("opportunityNumber"),
+        "title": data.get("opportunityTitle"),
+        "agency": synopsis.get("agencyName"),
+        "award_floor": _parse_grants_gov_currency(synopsis.get("awardFloor")),
+        "award_ceiling": _parse_grants_gov_currency(synopsis.get("awardCeiling")),
+    }
+
+
+@app.get("/api/grantsgov/opportunity/{opportunity_id}")
+def fetch_grants_gov_opportunity(opportunity_id: str):
+    """Fetch detailed opportunity data, including award ceiling/floor, from Grants.gov."""
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if not response.ok:
-            raise HTTPException(status_code=500, detail="Grants.gov rejected detail request.")
-
-        json_response = response.json()
-        if json_response.get("errorcode") != 0:
-            raise HTTPException(status_code=500, detail="Grants.gov opportunity detail returned an error.")
-
-        data = json_response.get("data") or {}
-        synopsis = data.get("synopsis") or {}
-
-        award_ceiling = _parse_grants_gov_currency(synopsis.get("awardCeiling"))
-        award_floor = _parse_grants_gov_currency(synopsis.get("awardFloor"))
-
-        return {
-            "opportunity_id": data.get("id") or opportunity_id,
-            "grant_number": data.get("opportunityNumber"),
-            "title": data.get("opportunityTitle"),
-            "agency": synopsis.get("agencyName"),
-            "award_floor": award_floor,
-            "award_ceiling": award_ceiling,
-        }
+        return _fetch_grants_gov_opportunity_details(opportunity_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -660,6 +673,15 @@ DISCOVERY_UPCOMING_STATUSES = {"forecasted", "forecast"}
 DISCOVERY_ALLOWED_STATUSES = DISCOVERY_OPEN_STATUSES | DISCOVERY_UPCOMING_STATUSES
 GRANTS_GOV_MAX_ROWS_PER_REQUEST = 100
 DISCOVERY_CACHE_TTL_SECONDS = 120
+DISCOVERY_AWARD_CACHE_TTL_SECONDS = 21600
+DISCOVERY_AWARD_FETCH_MAX_WORKERS = 8
+
+AWARD_CEILING_RANGE_PRESETS = {
+    "lt_100k": (None, 100000),
+    "100k_500k": (100000, 500000),
+    "500k_1m": (500000, 1000000),
+    "gt_1m": (1000000, None),
+}
 
 _discovery_search_cache = {}
 
@@ -752,7 +774,303 @@ def _cache_discovery_dataset(keyword: Optional[str], category: Optional[str], re
     }
 
 
-def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = None, page: int = 1, page_size: int = 25):
+def _parse_award_ceiling_range(award_ceiling_range: Optional[str]) -> tuple[Optional[int], Optional[int]]:
+    normalized_range = (award_ceiling_range or "").strip().lower()
+    if not normalized_range or normalized_range == "all":
+        return None, None
+
+    if normalized_range in AWARD_CEILING_RANGE_PRESETS:
+        return AWARD_CEILING_RANGE_PRESETS[normalized_range]
+
+    cleaned = (
+        normalized_range
+        .replace("$", "")
+        .replace(",", "")
+        .replace(" ", "")
+        .replace("million", "m")
+    )
+
+    def parse_amount(raw_value: str) -> Optional[int]:
+        if not raw_value:
+            return None
+        multiplier = 1
+        if raw_value.endswith("k"):
+            multiplier = 1000
+            raw_value = raw_value[:-1]
+        elif raw_value.endswith("m"):
+            multiplier = 1000000
+            raw_value = raw_value[:-1]
+
+        try:
+            return int(float(raw_value) * multiplier)
+        except ValueError:
+            return None
+
+    if cleaned.startswith("<"):
+        upper_bound = parse_amount(cleaned[1:])
+        if upper_bound is None:
+            raise HTTPException(status_code=400, detail="Invalid award_ceiling_range value.")
+        return None, upper_bound
+
+    if cleaned.startswith(">"):
+        lower_bound = parse_amount(cleaned[1:])
+        if lower_bound is None:
+            raise HTTPException(status_code=400, detail="Invalid award_ceiling_range value.")
+        return lower_bound, None
+
+    if "-" in cleaned:
+        raw_min, raw_max = cleaned.split("-", 1)
+        lower_bound = parse_amount(raw_min)
+        upper_bound = parse_amount(raw_max)
+        if lower_bound is None or upper_bound is None:
+            raise HTTPException(status_code=400, detail="Invalid award_ceiling_range value.")
+        return lower_bound, upper_bound
+
+    raise HTTPException(status_code=400, detail="Invalid award_ceiling_range value.")
+
+
+def _get_cached_award_details(opportunity_id: str):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        cached_row = conn.execute(
+            """
+            SELECT *
+            FROM discovery_award_cache
+            WHERE opportunity_id = ?
+            """,
+            (opportunity_id,)
+        ).fetchone()
+
+        if not cached_row:
+            return None
+
+        fetched_at = cached_row["fetched_at"] or ""
+        try:
+            fetched_at_dt = datetime.fromisoformat(fetched_at)
+        except ValueError:
+            fetched_at_dt = None
+
+        if fetched_at_dt is None or (datetime.utcnow() - fetched_at_dt).total_seconds() > DISCOVERY_AWARD_CACHE_TTL_SECONDS:
+            conn.execute(
+                "DELETE FROM discovery_award_cache WHERE opportunity_id = ?",
+                (opportunity_id,)
+            )
+            conn.commit()
+            return None
+
+        return dict(cached_row)
+
+
+def _get_award_details_for_opportunity(opportunity_id: str):
+    cached = _get_cached_award_details(opportunity_id)
+    if cached:
+        return cached
+
+    details = _fetch_grants_gov_opportunity_details(opportunity_id)
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            """
+            INSERT INTO discovery_award_cache (
+                opportunity_id, grant_number, title, agency, award_floor, award_ceiling, fetched_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(opportunity_id) DO UPDATE SET
+                grant_number = excluded.grant_number,
+                title = excluded.title,
+                agency = excluded.agency,
+                award_floor = excluded.award_floor,
+                award_ceiling = excluded.award_ceiling,
+                fetched_at = excluded.fetched_at
+            """,
+            (
+                details["opportunity_id"],
+                details["grant_number"],
+                details["title"],
+                details["agency"],
+                details["award_floor"],
+                details["award_ceiling"],
+                datetime.utcnow().isoformat(timespec="seconds"),
+            )
+        )
+        conn.commit()
+
+    return details
+
+
+def _load_cached_award_details(opportunity_ids: list[str]):
+    if not opportunity_ids:
+        return {}, []
+
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        placeholders = ", ".join(["?"] * len(opportunity_ids))
+        cached_rows = conn.execute(
+            f"""
+            SELECT *
+            FROM discovery_award_cache
+            WHERE opportunity_id IN ({placeholders})
+            """,
+            opportunity_ids
+        ).fetchall()
+
+    now = datetime.utcnow()
+    valid_details_by_id = {}
+    stale_ids = []
+
+    for row in cached_rows:
+        fetched_at = row["fetched_at"] or ""
+        try:
+            fetched_at_dt = datetime.fromisoformat(fetched_at)
+        except ValueError:
+            fetched_at_dt = None
+
+        opportunity_id = row["opportunity_id"]
+        if fetched_at_dt is None or (now - fetched_at_dt).total_seconds() > DISCOVERY_AWARD_CACHE_TTL_SECONDS:
+            stale_ids.append(opportunity_id)
+            continue
+
+        valid_details_by_id[opportunity_id] = dict(row)
+
+    if stale_ids:
+        with sqlite3.connect(DB_FILE) as conn:
+            placeholders = ", ".join(["?"] * len(stale_ids))
+            conn.execute(
+                f"DELETE FROM discovery_award_cache WHERE opportunity_id IN ({placeholders})",
+                stale_ids
+            )
+            conn.commit()
+
+    return valid_details_by_id, stale_ids
+
+
+def _cache_award_details_batch(details_batch: list[dict]):
+    if not details_batch:
+        return
+
+    rows = [
+        (
+            details["opportunity_id"],
+            details["grant_number"],
+            details["title"],
+            details["agency"],
+            details["award_floor"],
+            details["award_ceiling"],
+            datetime.utcnow().isoformat(timespec="seconds"),
+        )
+        for details in details_batch
+    ]
+
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.executemany(
+            """
+            INSERT INTO discovery_award_cache (
+                opportunity_id, grant_number, title, agency, award_floor, award_ceiling, fetched_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(opportunity_id) DO UPDATE SET
+                grant_number = excluded.grant_number,
+                title = excluded.title,
+                agency = excluded.agency,
+                award_floor = excluded.award_floor,
+                award_ceiling = excluded.award_ceiling,
+                fetched_at = excluded.fetched_at
+            """,
+            rows
+        )
+        conn.commit()
+
+
+def _hydrate_award_cache(opportunity_ids: list[str]):
+    if not opportunity_ids:
+        return {}
+
+    cached_details_by_id, _ = _load_cached_award_details(opportunity_ids)
+    missing_ids = [opportunity_id for opportunity_id in opportunity_ids if opportunity_id not in cached_details_by_id]
+    if not missing_ids:
+        return cached_details_by_id
+
+    fetched_details = []
+    max_workers = min(DISCOVERY_AWARD_FETCH_MAX_WORKERS, len(missing_ids))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(_fetch_grants_gov_opportunity_details, opportunity_id): opportunity_id
+            for opportunity_id in missing_ids
+        }
+        for future in as_completed(future_map):
+            fetched_details.append(future.result())
+
+    _cache_award_details_batch(fetched_details)
+    for details in fetched_details:
+        cached_details_by_id[details["opportunity_id"]] = details
+
+    return cached_details_by_id
+
+
+def _filter_results_by_award_ceiling(results, award_ceiling_range: Optional[str]):
+    lower_bound, upper_bound = _parse_award_ceiling_range(award_ceiling_range)
+    if lower_bound is None and upper_bound is None:
+        return results
+
+    opportunity_ids = [result["grants_gov_id"] for result in results if result.get("grants_gov_id")]
+    if not opportunity_ids:
+        return []
+
+    _hydrate_award_cache(opportunity_ids)
+
+    placeholders = ", ".join(["?"] * len(opportunity_ids))
+    where_clauses = [f"opportunity_id IN ({placeholders})", "award_ceiling IS NOT NULL"]
+    query_params = list(opportunity_ids)
+
+    if lower_bound is not None and upper_bound is not None:
+        where_clauses.append("award_ceiling BETWEEN ? AND ?")
+        query_params.extend([lower_bound, upper_bound])
+    elif lower_bound is not None:
+        where_clauses.append("award_ceiling > ?")
+        query_params.append(lower_bound)
+    elif upper_bound is not None:
+        where_clauses.append("award_ceiling < ?")
+        query_params.append(upper_bound)
+
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.row_factory = sqlite3.Row
+        matching_rows = conn.execute(
+            f"""
+            SELECT opportunity_id, award_floor, award_ceiling
+            FROM discovery_award_cache
+            WHERE {" AND ".join(where_clauses)}
+            """,
+            query_params
+        ).fetchall()
+
+    matching_details_by_id = {
+        row["opportunity_id"]: {
+            "award_floor": row["award_floor"],
+            "award_ceiling": row["award_ceiling"],
+        }
+        for row in matching_rows
+    }
+
+    filtered_results = []
+    for result in results:
+        opportunity_id = result.get("grants_gov_id")
+        if opportunity_id not in matching_details_by_id:
+            continue
+
+        filtered_results.append({
+            **result,
+            **matching_details_by_id[opportunity_id],
+        })
+
+    return filtered_results
+
+
+def _search_grants_gov(
+    keyword: Optional[str] = None,
+    category: Optional[str] = None,
+    award_ceiling_range: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+):
     """Search Grants.gov, sort the full result set by Close Date, then paginate."""
     try:
         cached_dataset = _get_cached_discovery_dataset(keyword, category)
@@ -826,6 +1144,8 @@ def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = 
             categories.sort(key=lambda option: option["label"])
             _cache_discovery_dataset(keyword, category, results, categories)
 
+        results = _filter_results_by_award_ceiling(results, award_ceiling_range)
+
         total_results = len(results)
         start_index = max(page - 1, 0) * page_size
         end_index = start_index + page_size
@@ -854,21 +1174,40 @@ def _search_grants_gov(keyword: Optional[str] = None, category: Optional[str] = 
 def search_grants_gov_opportunities(
     keyword: Optional[str] = None,
     category: Optional[str] = None,
+    award_ceiling_range: Optional[str] = None,
     page: int = 1,
     page_size: int = 25,
 ):
     """Search Grants.gov with optional keyword/category filters and paginated results."""
     safe_page = max(page, 1)
     safe_page_size = min(max(page_size, 1), 100)
-    return _search_grants_gov(keyword=keyword, category=category, page=safe_page, page_size=safe_page_size)
+    return _search_grants_gov(
+        keyword=keyword,
+        category=category,
+        award_ceiling_range=award_ceiling_range,
+        page=safe_page,
+        page_size=safe_page_size,
+    )
 
 
 @app.get("/api/grantsgov/keyword/{keyword}")
-def search_grants_gov_keyword(keyword: str, category: Optional[str] = None, page: int = 1, page_size: int = 25):
+def search_grants_gov_keyword(
+    keyword: str,
+    category: Optional[str] = None,
+    award_ceiling_range: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+):
     """Backward-compatible keyword search route."""
     safe_page = max(page, 1)
     safe_page_size = min(max(page_size, 1), 100)
-    return _search_grants_gov(keyword=keyword, category=category, page=safe_page, page_size=safe_page_size)
+    return _search_grants_gov(
+        keyword=keyword,
+        category=category,
+        award_ceiling_range=award_ceiling_range,
+        page=safe_page,
+        page_size=safe_page_size,
+    )
 
 
 @app.post("/api/notifications/expiration-check", response_model=dict)

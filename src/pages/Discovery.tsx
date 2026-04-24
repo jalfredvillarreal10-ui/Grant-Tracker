@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, AlertCircle, PlusCircle, CheckCircle2, Filter, Star } from 'lucide-react';
+import { Search, AlertCircle, PlusCircle, CheckCircle2, Funnel, Star } from 'lucide-react';
 import type { Grant } from '../types/grant';
 
 interface DiscoveryProps {
@@ -11,6 +11,15 @@ interface DiscoveryProps {
 
 const PAGE_SIZE = 25;
 const DEFAULT_CATEGORY = 'HL';
+const DEFAULT_AWARD_CEILING_RANGE = 'All';
+
+const AWARD_CEILING_OPTIONS = [
+  { label: 'All Ranges', value: 'All' },
+  { label: '<$100,000', value: 'lt_100k' },
+  { label: '$100k-$500k', value: '100k_500k' },
+  { label: '$500k-$1M', value: '500k_1m' },
+  { label: '>$1M', value: 'gt_1m' },
+];
 
 type CategoryOption = {
   label: string;
@@ -24,6 +33,8 @@ type SearchResult = {
   agency: string;
   deadline: string;
   discovery_status: 'open' | 'upcoming' | 'other';
+  award_floor?: number | null;
+  award_ceiling?: number | null;
   grants_gov_id?: string;
   funder_portal_url?: string;
 };
@@ -67,6 +78,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>(DEFAULT_CATEGORY);
+  const [selectedAwardCeilingRange, setSelectedAwardCeilingRange] = useState<string>(DEFAULT_AWARD_CEILING_RANGE);
   const [activeKeyword, setActiveKeyword] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -79,7 +91,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   const [loadingDetailIds, setLoadingDetailIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    void runSearch({ keyword: '', category: DEFAULT_CATEGORY, page: 1 });
+    void runSearch({
+      keyword: '',
+      category: DEFAULT_CATEGORY,
+      awardCeilingRange: DEFAULT_AWARD_CEILING_RANGE,
+      page: 1,
+    });
     void fetchFavorites();
   }, []);
 
@@ -210,10 +227,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   const runSearch = async ({
     keyword,
     category = 'All',
+    awardCeilingRange = 'All',
     page = 1,
   }: {
     keyword: string;
     category?: string;
+    awardCeilingRange?: string;
     page?: number;
   }) => {
     setIsSearching(true);
@@ -227,6 +246,9 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
       if (category !== 'All') {
         params.set('category', category);
       }
+      if (awardCeilingRange !== 'All') {
+        params.set('award_ceiling_range', awardCeilingRange);
+      }
       params.set('page', page.toString());
       params.set('page_size', PAGE_SIZE.toString());
 
@@ -236,6 +258,18 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
       if (response.ok) {
         const data: SearchResponse = await response.json();
         setSearchResults(data.results || []);
+        setOpportunityDetailsById(prev => {
+          const next = { ...prev };
+          (data.results || []).forEach(result => {
+            if (!result.grants_gov_id) return;
+            if (result.award_floor == null && result.award_ceiling == null) return;
+            next[result.grants_gov_id] = {
+              award_floor: result.award_floor,
+              award_ceiling: result.award_ceiling,
+            };
+          });
+          return next;
+        });
         setAvailableCategories(data.categories || []);
         setTotalResults(data.total_results || 0);
         setCurrentPage(data.current_page || 1);
@@ -262,17 +296,42 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    void runSearch({ keyword: searchQuery, category: selectedCategory, page: 1 });
+    void runSearch({
+      keyword: searchQuery,
+      category: selectedCategory,
+      awardCeilingRange: selectedAwardCeilingRange,
+      page: 1,
+    });
   };
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
-    void runSearch({ keyword: activeKeyword || searchQuery, category, page: 1 });
+    void runSearch({
+      keyword: activeKeyword || searchQuery,
+      category,
+      awardCeilingRange: selectedAwardCeilingRange,
+      page: 1,
+    });
+  };
+
+  const handleAwardCeilingChange = (awardCeilingRange: string) => {
+    setSelectedAwardCeilingRange(awardCeilingRange);
+    void runSearch({
+      keyword: activeKeyword || searchQuery,
+      category: selectedCategory,
+      awardCeilingRange,
+      page: 1,
+    });
   };
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages || page === currentPage) return;
-    void runSearch({ keyword: activeKeyword, category: selectedCategory, page });
+    void runSearch({
+      keyword: activeKeyword,
+      category: selectedCategory,
+      awardCeilingRange: selectedAwardCeilingRange,
+      page,
+    });
   };
 
   const handleSaveToTracking = async (
@@ -482,16 +541,16 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
         {activeTab === 'results' && (
           <>
-            <div className="rounded-2xl border border-app-border bg-app-card p-5 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
               <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 md:flex-row">
                 <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-[48%] text-app-secondary-muted/80" />
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-[48%] text-slate-400" />
                   <input
                     type="text"
                     placeholder="Search Grants.gov or leave blank to browse open and upcoming grants..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-app-border bg-app-muted p-3.5 pl-12 text-base text-app-primary outline-none transition-colors placeholder:text-app-secondary-muted/80 focus:border-app-primary focus:bg-app-card"
+                    className="w-full rounded-xl border border-slate-200 bg-white p-3.5 pl-12 text-base text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400"
                   />
                 </div>
                 <button
@@ -503,23 +562,40 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                 </button>
               </form>
 
-              {availableCategories.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-app-border pt-4">
-                  <Filter className="h-4 w-4 text-app-secondary-muted/80" />
-                  <span className="text-sm font-bold uppercase tracking-wider text-app-secondary">Filter by Category</span>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="min-w-[220px] flex-1 rounded-lg border border-app-border bg-app-muted px-3 py-2 text-sm font-medium text-app-primary outline-none transition-colors hover:bg-app-soft/50 focus:border-app-primary md:max-w-xl"
-                  >
-                    <option value="All">All</option>
-                    {availableCategories.map(category => (
-                      <option key={category.value} value={category.value}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-xs font-bold text-app-secondary-muted/80 md:ml-auto">
+              {(availableCategories.length > 0 || AWARD_CEILING_OPTIONS.length > 0) && (
+                <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 lg:flex-row lg:items-center">
+                  <div className="flex flex-1 flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Funnel className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm font-bold uppercase tracking-wider text-slate-500">Filter by Category</span>
+                    </div>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => handleCategoryChange(e.target.value)}
+                      className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition-colors hover:bg-slate-100 focus:border-slate-400"
+                    >
+                      <option value="All">All</option>
+                      {availableCategories.map(category => (
+                        <option key={category.value} value={category.value}>
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="hidden h-8 w-px bg-slate-200 lg:block" />
+                    <span className="text-sm font-bold uppercase tracking-wider text-slate-500">Award Ceiling</span>
+                    <select
+                      value={selectedAwardCeilingRange}
+                      onChange={(e) => handleAwardCeilingChange(e.target.value)}
+                      className="min-w-[170px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition-colors hover:bg-slate-100 focus:border-slate-400"
+                    >
+                      {AWARD_CEILING_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 lg:ml-auto">
                     {totalResults.toLocaleString()} total results
                   </span>
                 </div>
