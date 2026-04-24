@@ -61,7 +61,10 @@ type NotificationRunResult = {
     grant_number: string;
     title: string;
     status_before_update: string;
+    event_kind: 'expiration' | 'deadline';
+    event_date: string;
     expiration_date: string;
+    days_until_event: number;
     days_until_expiration: number;
     notice_type: string;
     recipients: string[];
@@ -76,11 +79,14 @@ type NotificationHistoryItem = {
   grant_id: number;
   grant_number: string;
   title: string;
+  event_kind: 'expiration' | 'deadline';
+  event_date?: string | null;
   notice_type: string;
   recipients: string[];
   subject: string;
   body: string;
   expiration_date?: string | null;
+  days_until_event: number;
   days_until_expiration: number;
   archived: boolean;
   sent_on: string;
@@ -129,6 +135,10 @@ function getPrimaryNotificationDate(grant: Grant) {
   }
 
   return undefined
+}
+
+function getNotificationEventLabel(eventKind: 'expiration' | 'deadline') {
+  return eventKind === 'deadline' ? 'Closes' : 'Expires'
 }
 
 function App() {
@@ -611,6 +621,10 @@ function App() {
     .filter((item, index, items) => items.findIndex((candidate) => candidate.grant.funderId === item.grant.funderId) === index)
     .sort((a, b) => (a.daysUntilEvent ?? 9999) - (b.daysUntilEvent ?? 9999))
 
+  const actionableDeadlineGrants = pipelineDeadlineGrants.filter(({ daysUntilEvent }) =>
+    daysUntilEvent != null && (daysUntilEvent === 7 || daysUntilEvent === 1 || daysUntilEvent <= 0)
+  )
+
   const awardExpirationGrants = grants
     .map((grant) => ({
       grant,
@@ -632,7 +646,7 @@ function App() {
     daysUntilEvent != null && daysUntilEvent < 7 && daysUntilEvent > 1
   )
 
-  const notificationBadgeCount = actionableNotificationGrants.length
+  const notificationBadgeCount = actionableNotificationGrants.length + actionableDeadlineGrants.length
 
   if (!isAuthenticated) return <Login onLogin={handleLogin} />
 
@@ -671,7 +685,7 @@ function App() {
                             Notification Center
                           </div>
                           <div className="mt-1 text-base font-bold text-slate-900">
-                            {notificationBadgeCount} active award alert{notificationBadgeCount === 1 ? '' : 's'}
+                            {notificationBadgeCount} active notification alert{notificationBadgeCount === 1 ? '' : 's'}
                           </div>
                         </div>
                         <button
@@ -691,7 +705,7 @@ function App() {
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
                           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Alerts</div>
-                          <div className="mt-1 text-lg font-bold text-slate-900">{actionableNotificationGrants.length}</div>
+                          <div className="mt-1 text-lg font-bold text-slate-900">{notificationBadgeCount}</div>
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
                           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">History</div>
@@ -750,12 +764,12 @@ function App() {
                               Award Expiration Alerts
                             </h3>
                             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-800">
-                              {actionableNotificationGrants.length}
+                              {actionableNotificationGrants.length + watchlistGrants.length}
                             </span>
                           </div>
-                          {actionableNotificationGrants.length === 0 ? (
+                          {actionableNotificationGrants.length === 0 && watchlistGrants.length === 0 ? (
                             <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                              No approved grants are currently at the 7-day, 1-day, or due-now thresholds.
+                              No approved grants are currently inside the 7-day expiration monitoring window.
                             </p>
                           ) : (
                             <div className="space-y-2">
@@ -780,28 +794,14 @@ function App() {
                                   </div>
                                 </div>
                               ))}
-                            </div>
-                          )}
-                        </section>
-
-                        <section>
-                          <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                              Award Expiration Watchlist
-                            </h3>
-                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                              {watchlistGrants.length}
-                            </span>
-                          </div>
-                          {watchlistGrants.length === 0 ? (
-                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                              No approved grants are inside 6 to 2 days remaining.
-                            </p>
-                          ) : (
-                            <div className="space-y-2">
                               {watchlistGrants.map(({ grant, daysUntilEvent }) => (
                                 <div key={`${grant.id}-watch`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                                  <div className="text-sm font-semibold leading-5 text-slate-900">{grant.title}</div>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="text-sm font-semibold leading-5 text-slate-900">{grant.title}</div>
+                                    <span className="rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                                      Watchlist
+                                    </span>
+                                  </div>
                                   <div className="mt-1 text-xs leading-5 text-slate-600">
                                     Expires {formatShortDate(getPrimaryNotificationDate(grant))}
                                     {' - '}
@@ -846,6 +846,9 @@ function App() {
                                   </div>
                                   <div className="mt-1 text-sm text-slate-900">{item.title}</div>
                                   <div className="mt-1 text-xs leading-5 text-slate-600">{item.subject}</div>
+                                  <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                                    {getNotificationEventLabel(item.event_kind)} {formatShortDate(item.event_date)}
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -874,7 +877,7 @@ function App() {
                                   </div>
                                   <div className="mt-1 text-sm text-slate-900">{item.title}</div>
                                   <div className="mt-1 text-xs leading-5 text-slate-600">
-                                    Expires {formatShortDate(item.expiration_date ?? undefined)}
+                                    {getNotificationEventLabel(item.event_kind)} {formatShortDate(item.event_date ?? item.expiration_date ?? undefined)}
                                     {' - '}
                                     Sent to {item.recipients.join(', ')}
                                   </div>
@@ -966,7 +969,7 @@ function App() {
               onGrantTracked={() => setActivePage('lifecycle')}
             />
           )}
-          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'available')} />}
+          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'applied')} />}
           {activePage === 'portfolio' && <Portfolio grants={grants} onAction={handleAction} />}
           {activePage === 'reporting' && <Reporting grants={grants} />}
         </div>
@@ -976,4 +979,3 @@ function App() {
 }
 
 export default App
-

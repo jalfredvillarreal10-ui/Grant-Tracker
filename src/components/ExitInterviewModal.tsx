@@ -48,11 +48,11 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
               <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-sm">
                 <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                <p>To maintain departmental records for high-value targets, please provide the following details regarding the unsuccessful application.</p>
+                <p>Please provide the following details regarding the unsuccessful application.</p>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase text-app-secondary-muted/80">Primary Rejection Reason</label>
+                <label className="text-xs font-bold uppercase text-app-secondary-muted/80">Primary Withdraw Reason</label>
                 <select
                   required
                   value={rejectionReason}
@@ -69,8 +69,7 @@ const ExitInterviewModal: React.FC<ExitInterviewModalProps> = ({ grant, isOpen, 
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase text-app-secondary-muted/80">Reviewer Feedback Summary</label>
                 <textarea
-                  required
-                  placeholder="Enter a brief summary of reviewer comments or internal findings..."
+                  placeholder="Enter a brief summary of internal findings..."
                   value={feedbackSummary}
                   onChange={(e) => setFeedbackSummary(e.target.value)}
                   className="min-h-[120px] resize-none rounded-lg border border-app-border bg-app-muted p-3 outline-none focus:border-[#002d62]"

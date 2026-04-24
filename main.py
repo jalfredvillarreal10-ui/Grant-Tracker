@@ -81,12 +81,15 @@ NOTIFICATION_LOG_TABLE_COLUMNS_SQL = '''
     grant_id INTEGER NOT NULL,
     grant_number TEXT NOT NULL,
     title TEXT NOT NULL,
+    event_kind TEXT NOT NULL DEFAULT 'expiration',
+    event_date DATE,
     notice_type TEXT NOT NULL,
     recipients TEXT NOT NULL,
     subject TEXT NOT NULL,
     body TEXT NOT NULL,
     expiration_date DATE,
     days_until_expiration INTEGER NOT NULL,
+    days_until_event INTEGER,
     archived INTEGER DEFAULT 0,
     sent_on DATE NOT NULL,
     sent_at TEXT NOT NULL,
@@ -120,6 +123,16 @@ def _ensure_grant_table_columns(cursor: sqlite3.Cursor, table_name: str):
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN grants_gov_id TEXT")
 
 
+def _ensure_notification_log_columns(cursor: sqlite3.Cursor):
+    existing_columns = {row[1] for row in cursor.execute("PRAGMA table_info(notification_log)").fetchall()}
+    if "event_kind" not in existing_columns:
+        cursor.execute("ALTER TABLE notification_log ADD COLUMN event_kind TEXT NOT NULL DEFAULT 'expiration'")
+    if "event_date" not in existing_columns:
+        cursor.execute("ALTER TABLE notification_log ADD COLUMN event_date DATE")
+    if "days_until_event" not in existing_columns:
+        cursor.execute("ALTER TABLE notification_log ADD COLUMN days_until_event INTEGER")
+
+
 def _insert_grant_record(cursor: sqlite3.Cursor, table_name: str, grant):
     placeholders = ", ".join(["?"] * len(GRANT_MUTABLE_COLUMNS))
     cursor.execute(f'''
@@ -138,6 +151,7 @@ def init_db():
         cursor.execute(f'CREATE TABLE IF NOT EXISTS discovery_award_cache ({DISCOVERY_AWARD_CACHE_TABLE_COLUMNS_SQL})')
         _ensure_grant_table_columns(cursor, "grants")
         _ensure_grant_table_columns(cursor, "favorites")
+        _ensure_notification_log_columns(cursor)
         conn.commit()
 
 # Run database initialization on startup when I get it working
@@ -193,12 +207,15 @@ class NotificationLogResponse(BaseModel):
     grant_id: int
     grant_number: str
     title: str
+    event_kind: str
+    event_date: Optional[str] = None
     notice_type: str
     recipients: List[str]
     subject: str
     body: str
     expiration_date: Optional[str] = None
     days_until_expiration: int
+    days_until_event: int
     archived: bool
     sent_on: str
     sent_at: str
@@ -231,39 +248,71 @@ def _parse_iso_date(raw_value: Optional[str]) -> Optional[date]:
         return None
 
 
-def _build_notification_recipients(grant_row: sqlite3.Row) -> List[str]:
+def _build_notification_recipients(grant_row: sqlite3.Row, event_kind: str) -> List[str]:
     recipients = [f"Department Head <{DEPARTMENT_HEAD_EMAIL}>"]
-    program_manager = (grant_row["program_manager"] or "").strip()
-    if program_manager:
-        recipients.append(f"{program_manager} <program.manager@laredo.gov>")
+    if event_kind == "expiration":
+        program_manager = (grant_row["program_manager"] or "").strip()
+        if program_manager:
+            recipients.append(f"{program_manager} <program.manager@laredo.gov>")
+    else:
+        internal_lead = (grant_row["internal_lead"] or "").strip()
+        if internal_lead:
+            recipients.append(f"{internal_lead} <internal.lead@laredo.gov>")
     return recipients
 
 
-def _build_notification_email(grant_row: sqlite3.Row, days_until_expiration: int) -> tuple[str, str]:
-    if days_until_expiration == 7:
+def _build_notification_email(grant_row: sqlite3.Row, event_kind: str, days_until_event: int) -> tuple[str, str, str]:
+    if days_until_event == 7:
         notice_label = "Reminder"
-        action_message = "This grant expires in 7 days. Review outstanding compliance items and prepare for closeout."
-    elif days_until_expiration == 1:
+    elif days_until_event == 1:
         notice_label = "Final Notice"
+    else:
+        notice_label = "Due Today" if event_kind == "deadline" else "Termination Notice"
+
+    if event_kind == "deadline":
+        notice_type = f"Deadline {notice_label}"
+        if days_until_event == 7:
+            action_message = "This grant deadline is in 7 days. Confirm the application package is on track for submission."
+        elif days_until_event == 1:
+            action_message = "This grant deadline is tomorrow. Finalize the submission immediately."
+        else:
+            action_message = "This grant deadline is today or past due. Verify whether submission is complete and update the record."
+
+        event_date = grant_row["deadline"]
+        body = (
+            f"Grant Title: {grant_row['title']}\n"
+            f"Grant Number: {grant_row['grant_number']}\n"
+            f"Current Status: {grant_row['status']}\n"
+            f"Application Deadline: {event_date}\n"
+            f"Internal Lead: {grant_row['internal_lead'] or 'Unassigned'}\n\n"
+            f"{action_message}"
+        )
+        subject = f"{notice_type}: {grant_row['title']} closes on {event_date}"
+        return notice_type, subject, body
+
+    notice_type = f"Expiration {notice_label}"
+    if days_until_event == 7:
+        action_message = "This grant expires in 7 days. Review outstanding compliance items and prepare for closeout."
+    elif days_until_event == 1:
         action_message = "This grant expires tomorrow. Complete final reporting and budget draw-downs immediately."
     else:
-        notice_label = "Termination Notice"
         action_message = "This grant is due today or past due and will be archived now."
 
-    subject = f"{notice_label}: {grant_row['title']} expires on {grant_row['expiration_date']}"
+    event_date = grant_row["expiration_date"]
+    subject = f"{notice_type}: {grant_row['title']} expires on {event_date}"
     body = (
         f"Grant Title: {grant_row['title']}\n"
         f"Grant Number: {grant_row['grant_number']}\n"
         f"Current Status: {grant_row['status']}\n"
-        f"Expiration Date: {grant_row['expiration_date']}\n"
+        f"Expiration Date: {event_date}\n"
         f"Program Manager: {grant_row['program_manager'] or 'Unassigned'}\n\n"
         f"{action_message}"
     )
-    return subject, body
+    return notice_type, subject, body
 
 
 def run_expiration_notification_check(today: Optional[date] = None):
-    """Evaluate expiring grants, emit mock notifications, and archive expired grants."""
+    """Evaluate expiring awards and application deadlines, emit mock notifications, and archive expired grants."""
     evaluation_date = today or date.today()
     notifications = []
     skipped_duplicates = 0
@@ -272,7 +321,7 @@ def run_expiration_notification_check(today: Optional[date] = None):
     with sqlite3.connect(DB_FILE) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        grants = cursor.execute(
+        expiration_grants = cursor.execute(
             """
             SELECT *
             FROM grants
@@ -282,93 +331,107 @@ def run_expiration_notification_check(today: Optional[date] = None):
             """
         , NOTIFICATION_INACTIVE_STATUSES).fetchall()
 
+        deadline_grants = cursor.execute(
+            """
+            SELECT *
+            FROM grants
+            WHERE status IN ('available', 'applied')
+              AND deadline IS NOT NULL
+              AND TRIM(deadline) != ''
+            """
+        ).fetchall()
+
         archived_ids = []
-        for grant in grants:
-            expiration_date = _parse_iso_date(grant["expiration_date"])
-            if expiration_date is None:
-                print(
-                    f"Skipping grant {grant['grant_number']} due to invalid expiration_date: "
-                    f"{grant['expiration_date']}"
-                )
-                continue
+        def process_notification_rows(rows, event_kind: str, date_field: str, should_archive: bool = False):
+            nonlocal skipped_duplicates
+            for grant in rows:
+                target_date = _parse_iso_date(grant[date_field])
+                if target_date is None:
+                    print(
+                        f"Skipping grant {grant['grant_number']} due to invalid {date_field}: "
+                        f"{grant[date_field]}"
+                    )
+                    continue
 
-            days_until_expiration = (expiration_date - evaluation_date).days
-            if days_until_expiration not in {7, 1} and days_until_expiration > 0:
-                continue
+                days_until_event = (target_date - evaluation_date).days
+                if days_until_event not in {7, 1} and days_until_event > 0:
+                    continue
 
-            notice_type = (
-                "Reminder"
-                if days_until_expiration == 7
-                else "Final Notice"
-                if days_until_expiration == 1
-                else "Termination Notice"
-            )
-            existing_log = cursor.execute(
-                """
-                SELECT id
-                FROM notification_log
-                WHERE grant_id = ?
-                  AND notice_type = ?
-                  AND sent_on = ?
-                """,
-                (grant["id"], notice_type, evaluation_date.isoformat())
-            ).fetchone()
-            if existing_log:
-                skipped_duplicates += 1
-                continue
+                notice_type, subject, body = _build_notification_email(grant, event_kind, days_until_event)
+                existing_log = cursor.execute(
+                    """
+                    SELECT id
+                    FROM notification_log
+                    WHERE grant_id = ?
+                      AND notice_type = ?
+                      AND sent_on = ?
+                    """,
+                    (grant["id"], notice_type, evaluation_date.isoformat())
+                ).fetchone()
+                if existing_log:
+                    skipped_duplicates += 1
+                    continue
 
-            recipients = _build_notification_recipients(grant)
-            subject, body = _build_notification_email(grant, days_until_expiration)
-            mock_email_service.send_email(recipients, subject, body)
+                recipients = _build_notification_recipients(grant, event_kind)
+                mock_email_service.send_email(recipients, subject, body)
 
-            notifications.append({
-                "grant_id": grant["id"],
-                "grant_number": grant["grant_number"],
-                "title": grant["title"],
-                "status_before_update": grant["status"],
-                "expiration_date": grant["expiration_date"],
-                "days_until_expiration": days_until_expiration,
-                "notice_type": notice_type,
-                "recipients": recipients,
-                "subject": subject,
-                "body": body,
-                "archived": days_until_expiration <= 0,
-            })
-            cursor.execute(
-                """
-                INSERT INTO notification_log (
-                    grant_id, grant_number, title, notice_type, recipients, subject, body,
-                    expiration_date, days_until_expiration, archived, sent_on, sent_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    grant["id"],
-                    grant["grant_number"],
-                    grant["title"],
-                    notice_type,
-                    " | ".join(recipients),
-                    subject,
-                    body,
-                    grant["expiration_date"],
-                    days_until_expiration,
-                    1 if days_until_expiration <= 0 else 0,
-                    evaluation_date.isoformat(),
-                    timestamp,
-                )
-            )
-
-            if days_until_expiration <= 0:
+                notifications.append({
+                    "grant_id": grant["id"],
+                    "grant_number": grant["grant_number"],
+                    "title": grant["title"],
+                    "status_before_update": grant["status"],
+                    "event_kind": event_kind,
+                    "event_date": grant[date_field],
+                    "expiration_date": grant["expiration_date"],
+                    "days_until_event": days_until_event,
+                    "days_until_expiration": days_until_event if event_kind == "expiration" else 0,
+                    "notice_type": notice_type,
+                    "recipients": recipients,
+                    "subject": subject,
+                    "body": body,
+                    "archived": should_archive and days_until_event <= 0,
+                })
                 cursor.execute(
-                    "UPDATE grants SET status = 'archived' WHERE id = ?",
-                    (grant["id"],)
+                    """
+                    INSERT INTO notification_log (
+                        grant_id, grant_number, title, event_kind, event_date, notice_type, recipients, subject, body,
+                        expiration_date, days_until_expiration, days_until_event, archived, sent_on, sent_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        grant["id"],
+                        grant["grant_number"],
+                        grant["title"],
+                        event_kind,
+                        grant[date_field],
+                        notice_type,
+                        " | ".join(recipients),
+                        subject,
+                        body,
+                        grant["expiration_date"],
+                        days_until_event if event_kind == "expiration" else 0,
+                        days_until_event,
+                        1 if should_archive and days_until_event <= 0 else 0,
+                        evaluation_date.isoformat(),
+                        timestamp,
+                    )
                 )
-                archived_ids.append(grant["id"])
+
+                if should_archive and days_until_event <= 0:
+                    cursor.execute(
+                        "UPDATE grants SET status = 'archived' WHERE id = ?",
+                        (grant["id"],)
+                    )
+                    archived_ids.append(grant["id"])
+
+        process_notification_rows(expiration_grants, "expiration", "expiration_date", should_archive=True)
+        process_notification_rows(deadline_grants, "deadline", "deadline")
 
         conn.commit()
 
     print(
-        f"Expiration notification check completed for {evaluation_date.isoformat()}. "
+        f"Notification check completed for {evaluation_date.isoformat()}. "
         f"Archived {len(archived_ids)} grant(s). Skipped {skipped_duplicates} duplicate notification(s)."
     )
     return {
@@ -443,7 +506,10 @@ def get_notification_history(conn: sqlite3.Connection = Depends(get_db_connectio
     return [
         {
             **dict(log),
+            "event_kind": log["event_kind"] or "expiration",
+            "event_date": log["event_date"] or log["expiration_date"],
             "recipients": [recipient for recipient in (log["recipients"] or "").split(" | ") if recipient],
+            "days_until_event": log["days_until_event"] if log["days_until_event"] is not None else log["days_until_expiration"],
             "archived": bool(log["archived"]),
         }
         for log in logs
@@ -1214,7 +1280,21 @@ def search_grants_gov_keyword(
 def trigger_expiration_notification_check():
     """Manual trigger for safely testing the scheduler logic on demand."""
     result = run_expiration_notification_check()
-    return {"message": "Expiration notification check completed", **result}
+    return {"message": "Notification check completed", **result}
+
+
+@app.post("/api/notifications/expiration-check/{evaluation_date}", response_model=dict)
+def trigger_expiration_notification_check_for_date(evaluation_date: str):
+    """Dev-oriented trigger that evaluates notifications against a supplied YYYY-MM-DD date."""
+    parsed_date = _parse_iso_date(evaluation_date)
+    if parsed_date is None:
+        raise HTTPException(status_code=400, detail="evaluation_date must be a valid YYYY-MM-DD date.")
+
+    result = run_expiration_notification_check(today=parsed_date)
+    return {
+        "message": f"Notification check completed for {parsed_date.isoformat()}",
+        **result,
+    }
 
 
 

@@ -107,6 +107,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const isActiveApplication = grant.status === 'applied' || grant.status === 'available';
   const isUnsuccessful = grant.status === 'denied' || grant.status === 'withdrawn';
   const isApproved = grant.status === 'approved';
   const progressWidth =
@@ -117,7 +118,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
         : '100%';
 
   const subtitle =
-    grant.status === 'applied'
+    isActiveApplication
       ? 'AWAITING REVIEW'
       : grant.status === 'approved'
         ? 'FUNDS ALLOCATED'
@@ -180,7 +181,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderRadius: '999px', border: `1px solid ${grant.status === 'approved' ? '#7BE0AC' : '#F2C14E'}`, background: grant.status === 'approved' ? '#DDFBEA' : '#FFF4CC', color: grant.status === 'approved' ? '#0C8C52' : '#B46900', fontSize: '14px', fontWeight: 700, boxShadow: grant.status === 'approved' ? '0 4px 12px rgba(16,185,129,0.18)' : '0 4px 12px rgba(242,193,78,0.28)' }}>
                 {badgeIcons[grant.status] ?? badgeIcons.applied}
-                {grant.status === 'applied' ? 'PENDING' : grant.status === 'approved' ? 'APPROVED' : grant.status.toUpperCase()}
+                {isActiveApplication ? 'PENDING' : grant.status === 'approved' ? 'APPROVED' : grant.status.toUpperCase()}
               </div>
               <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: isApproved ? '#11A861' : '#667A98' }}>
                 {subtitle}
@@ -249,7 +250,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
               </div>
             )}
 
-            {grant.status === 'applied' && (
+            {isActiveApplication && (
               <>
                 <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
                   <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>

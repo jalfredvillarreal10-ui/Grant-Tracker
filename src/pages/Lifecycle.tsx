@@ -23,7 +23,7 @@ const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActiv
 
 
 const activeGrants = grants
-  .filter(g => g.status === 'applied') 
+  .filter(g => g.status === 'applied' || g.status === 'available')
   .sort((a, b) => new Date(a.deadline ?? '9999-12-31').getTime() - new Date(b.deadline ?? '9999-12-31').getTime());
 
 const archivedGrants = grants
