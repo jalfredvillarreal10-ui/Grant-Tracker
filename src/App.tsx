@@ -366,10 +366,18 @@ function App() {
         })
       });
       if (response.ok) {
-        fetchGrants();
+        setGrants((prev) =>
+          prev.map((existingGrant) =>
+            existingGrant.id === grant.id ? grant : existingGrant
+          )
+        )
+        await fetchGrants();
+        return true
       }
+      return false
     } catch (error) {
       console.error("Failed to update grant:", error);
+      return false
     }
   }
 
@@ -969,8 +977,8 @@ function App() {
               onGrantTracked={() => setActivePage('lifecycle')}
             />
           )}
-          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'applied')} />}
-          {activePage === 'portfolio' && <Portfolio grants={grants} onAction={handleAction} />}
+          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'applied')} onSaveEdit={saveGrantUpdate} />}
+          {activePage === 'portfolio' && <Portfolio grants={grants} onAction={handleAction} onSaveEdit={saveGrantUpdate} />}
           {activePage === 'reporting' && <Reporting grants={grants} />}
         </div>
       </main>

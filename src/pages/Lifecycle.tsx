@@ -14,9 +14,10 @@ interface LifecycleProps {
     feedbackSummary?: string
   ) => void;
   onReActivate: (id: string) => void;
+  onSaveEdit: (grant: Grant) => Promise<boolean | void>;
 }
 
-const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActivate }) => {
+const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActivate, onSaveEdit }) => {
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [selectedGrantForExit, setSelectedGrantForExit] = useState<Grant | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<Grant | null>(null);
@@ -60,6 +61,7 @@ const archivedGrants = grants
             key={grant.id} 
             grant={grant}
             onUpdateStatus={handleUpdateStatus}
+            onSaveEdit={onSaveEdit}
           />
         ))}
       </div>
@@ -122,6 +124,7 @@ const archivedGrants = grants
                       grant={grant}
                       onReActivate={onReActivate}
                       onShowFeedback={setSelectedFeedback}
+                      onSaveEdit={onSaveEdit}
                     />
                   ))}
                 </div>

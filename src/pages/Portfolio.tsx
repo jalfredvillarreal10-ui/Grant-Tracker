@@ -7,11 +7,12 @@ import CloseoutChecklistModal from '../components/CloseoutChecklistModal';
 interface PortfolioProps {
   grants: Grant[];
   onAction: (id: string, action: string) => Promise<void>;
+  onSaveEdit: (grant: Grant) => Promise<boolean | void>;
 }
 
 type PortfolioFilter = 'active' | 'recent' | 'extension' | 'closed';
 
-const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
+const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction, onSaveEdit }) => {
   const [filter, setFilter] = useState<PortfolioFilter>('active');
   const [grantForCloseout, setGrantForCloseout] = useState<Grant | null>(null);
 
@@ -98,6 +99,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction }) => {
           <GrantCard 
             key={grant.id} 
             grant={grant} 
+            onSaveEdit={onSaveEdit}
             onAction={(id, action) => {
               if (action === 'close') {
                 setGrantForCloseout(grant)
