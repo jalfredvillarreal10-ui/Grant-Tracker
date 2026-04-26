@@ -30,6 +30,7 @@ app.add_middleware(
 # 2. DATABASE SETUP
 DB_FILE = Path(__file__).resolve().with_name("grants.db")
 DEPARTMENT_HEAD_EMAIL = os.getenv("LHGP_DEPARTMENT_HEAD_EMAIL", "department.head@laredo.gov")
+MOCK_NOTIFICATION_EMAIL = os.getenv("LHGP_MOCK_NOTIFICATION_EMAIL", DEPARTMENT_HEAD_EMAIL)
 NOTIFICATION_SCHEDULE_MODE = os.getenv("LHGP_NOTIFICATION_SCHEDULE_MODE", "daily").strip().lower()
 NOTIFICATION_DAILY_HOUR = int(os.getenv("LHGP_NOTIFICATION_DAILY_HOUR", "9"))
 NOTIFICATION_DAILY_MINUTE = int(os.getenv("LHGP_NOTIFICATION_DAILY_MINUTE", "0"))
@@ -248,17 +249,8 @@ def _parse_iso_date(raw_value: Optional[str]) -> Optional[date]:
         return None
 
 
-def _build_notification_recipients(grant_row: sqlite3.Row, event_kind: str) -> List[str]:
-    recipients = [f"Department Head <{DEPARTMENT_HEAD_EMAIL}>"]
-    if event_kind == "expiration":
-        program_manager = (grant_row["program_manager"] or "").strip()
-        if program_manager:
-            recipients.append(f"{program_manager} <program.manager@laredo.gov>")
-    else:
-        internal_lead = (grant_row["internal_lead"] or "").strip()
-        if internal_lead:
-            recipients.append(f"{internal_lead} <internal.lead@laredo.gov>")
-    return recipients
+def _build_notification_recipients(_: sqlite3.Row, __: str) -> List[str]:
+    return [MOCK_NOTIFICATION_EMAIL]
 
 
 def _build_notification_email(grant_row: sqlite3.Row, event_kind: str, days_until_event: int) -> tuple[str, str, str]:
@@ -284,7 +276,7 @@ def _build_notification_email(grant_row: sqlite3.Row, event_kind: str, days_unti
             f"Grant Number: {grant_row['grant_number']}\n"
             f"Current Status: {grant_row['status']}\n"
             f"Application Deadline: {event_date}\n"
-            f"Internal Lead: {grant_row['internal_lead'] or 'Unassigned'}\n\n"
+            f"Internal Lead Status: {'Assigned' if (grant_row['internal_lead'] or '').strip() else 'Unassigned'}\n\n"
             f"{action_message}"
         )
         subject = f"{notice_type}: {grant_row['title']} closes on {event_date}"
@@ -305,7 +297,7 @@ def _build_notification_email(grant_row: sqlite3.Row, event_kind: str, days_unti
         f"Grant Number: {grant_row['grant_number']}\n"
         f"Current Status: {grant_row['status']}\n"
         f"Expiration Date: {event_date}\n"
-        f"Program Manager: {grant_row['program_manager'] or 'Unassigned'}\n\n"
+        f"Program Manager Status: {'Assigned' if (grant_row['program_manager'] or '').strip() else 'Unassigned'}\n\n"
         f"{action_message}"
     )
     return notice_type, subject, body
@@ -508,7 +500,7 @@ def get_notification_history(conn: sqlite3.Connection = Depends(get_db_connectio
             **dict(log),
             "event_kind": log["event_kind"] or "expiration",
             "event_date": log["event_date"] or log["expiration_date"],
-            "recipients": [recipient for recipient in (log["recipients"] or "").split(" | ") if recipient],
+            "recipients": [MOCK_NOTIFICATION_EMAIL],
             "days_until_event": log["days_until_event"] if log["days_until_event"] is not None else log["days_until_expiration"],
             "archived": bool(log["archived"]),
         }
