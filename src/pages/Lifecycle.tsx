@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Info, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, MessageSquare, PlusCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Grant, GrantStatus } from '../types/grant';
 import GrantCard from '../components/GrantCard';
@@ -15,12 +15,14 @@ interface LifecycleProps {
   ) => void;
   onReActivate: (id: string) => void;
   onSaveEdit: (grant: Grant) => Promise<boolean | void>;
+  onCreateGrant: (grant: Grant) => Promise<boolean | void>;
 }
 
-const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActivate, onSaveEdit }) => {
+const Lifecycle: React.FC<LifecycleProps> = ({ grants, onUpdateStatus, onReActivate, onSaveEdit, onCreateGrant }) => {
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [selectedGrantForExit, setSelectedGrantForExit] = useState<Grant | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<Grant | null>(null);
+  const [manualGrant, setManualGrant] = useState<Grant | null>(null);
 
 
 const activeGrants = grants
@@ -48,14 +50,83 @@ const archivedGrants = grants
     }
   };
 
+  const handleAddGrant = () => {
+    if (manualGrant) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const tempId = `draft-${Date.now()}`;
+
+    setManualGrant({
+      id: tempId,
+      title: '',
+      funderId: `MANUAL-${Date.now()}`,
+      source: 'Federal',
+      amount: 0,
+      status: 'applied',
+      deadline: '',
+      submissionDate: today,
+      applicationStatus: 'Submitted',
+      awardFloor: undefined,
+      awardCeiling: undefined,
+      expectedNotificationDate: undefined,
+      pocName: undefined,
+      pocEmail: undefined,
+      internalLead: undefined,
+      rejectionReason: undefined,
+      feedbackSummary: undefined,
+      denialDate: undefined,
+      expirationDate: undefined,
+      spentAmount: 0,
+      remainingAmount: 0,
+      renewalStatus: 'None',
+      complianceCategory: undefined,
+      programManager: undefined,
+      nextReportDue: undefined,
+      onboardingDate: undefined,
+      isExtended: false,
+      funderPortalUrl: undefined,
+      grantsGovId: undefined,
+    });
+  };
+
+  const handleCreateGrant = async (grant: Grant) => {
+    const created = await onCreateGrant(grant);
+    if (created !== false) {
+      setManualGrant(null);
+    }
+    return created;
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '3rem' }}>
-      <header>
-        <h1 className="text-3xl font-bold text-app-primary">Application Lifecycle</h1>
-        <p className="text-app-secondary">Monitoring submitted applications and pending decisions.</p>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <h1 className="text-3xl font-bold text-app-primary">Application Lifecycle</h1>
+          <p className="text-app-secondary">Monitoring submitted applications and pending decisions.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleAddGrant}
+          disabled={!!manualGrant}
+          className="inline-flex items-center gap-2 rounded-lg bg-laredo-navy px-4 py-2.5 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <PlusCircle className="h-4 w-4" />
+          Add Grant
+        </button>
       </header>
 
       <div style={{ width: '100%', maxWidth: '52rem', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+        {manualGrant && (
+          <GrantCard
+            key={manualGrant.id}
+            grant={manualGrant}
+            onSaveEdit={handleCreateGrant}
+            onCancelEdit={() => setManualGrant(null)}
+            summaryMetric="ceiling"
+            approvedDetailMetric="ceiling"
+            startInEditMode
+          />
+        )}
         {activeGrants.map(grant => (
           <GrantCard 
             key={grant.id} 

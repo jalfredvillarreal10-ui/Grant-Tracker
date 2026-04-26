@@ -26,8 +26,10 @@ interface GrantCardProps {
   onReActivate?: (id: string) => void;
   onShowFeedback?: (grant: Grant) => void;
   onSaveEdit?: (grant: Grant) => Promise<boolean | void>;
+  onCancelEdit?: () => void;
   summaryMetric?: 'amount' | 'ceiling';
   approvedDetailMetric?: 'amount' | 'ceiling';
+  startInEditMode?: boolean;
 }
 
 type EditableGrantFields = {
@@ -232,21 +234,24 @@ const GrantCard: React.FC<GrantCardProps> = ({
   onReActivate,
   onShowFeedback,
   onSaveEdit,
+  onCancelEdit,
   summaryMetric = 'amount',
   approvedDetailMetric = 'amount',
+  startInEditMode = false,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(startInEditMode);
+  const [isEditing, setIsEditing] = useState(startInEditMode);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
   const [draft, setDraft] = useState<EditableGrantFields>(() => toEditableFields(grant));
 
   useEffect(() => {
     setDraft(toEditableFields(grant));
-    setIsEditing(false);
+    setIsExpanded(startInEditMode);
+    setIsEditing(startInEditMode);
     setIsSavingEdit(false);
     setEditError('');
-  }, [grant]);
+  }, [grant, startInEditMode]);
 
   const isActiveApplication = grant.status === 'applied' || grant.status === 'available';
   const isUnsuccessful = grant.status === 'denied' || grant.status === 'withdrawn';
@@ -301,8 +306,13 @@ const GrantCard: React.FC<GrantCardProps> = ({
     const title = draft.title.trim();
     const funderId = draft.funderId.trim();
 
-    if (!title || !funderId) {
-      setEditError('Title and grant number are required.');
+    if (!title) {
+      setEditError('Grant title is required.');
+      return;
+    }
+
+    if (!funderId) {
+      setEditError('Grant number is required.');
       return;
     }
 
@@ -351,6 +361,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
         setEditError('Failed to save grant changes.');
         return;
       }
+      setIsExpanded(false);
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save grant edit:', error);
@@ -405,8 +416,10 @@ const GrantCard: React.FC<GrantCardProps> = ({
                   onClick={() => {
                     if (isEditing) {
                       setDraft(toEditableFields(grant));
+                      setIsExpanded(false);
                       setIsEditing(false);
                       setEditError('');
+                      onCancelEdit?.();
                       return;
                     }
                     if (!isExpanded) {
@@ -506,8 +519,10 @@ const GrantCard: React.FC<GrantCardProps> = ({
                         type="button"
                         onClick={() => {
                           setDraft(toEditableFields(grant));
+                          setIsExpanded(false);
                           setIsEditing(false);
                           setEditError('');
+                          onCancelEdit?.();
                         }}
                         disabled={isSavingEdit}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '14px', border: '1px solid #cbd5e1', padding: '11px 14px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer', opacity: isSavingEdit ? 0.6 : 1 }}

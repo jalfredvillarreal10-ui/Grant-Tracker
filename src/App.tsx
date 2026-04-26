@@ -381,6 +381,54 @@ function App() {
     }
   }
 
+  const createGrant = async (grant: Grant) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/grants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_number: grant.funderId,
+          title: grant.title,
+          agency: grant.source,
+          deadline: grant.deadline || '2099-12-31',
+          amount: grant.amount,
+          award_floor: grant.awardFloor,
+          award_ceiling: grant.awardCeiling,
+          status: grant.status,
+          submission_date: grant.submissionDate,
+          expected_notification_date: grant.expectedNotificationDate,
+          poc_name: grant.pocName,
+          poc_email: grant.pocEmail,
+          internal_lead: grant.internalLead,
+          application_status: grant.applicationStatus,
+          rejection_reason: grant.rejectionReason,
+          feedback_summary: grant.feedbackSummary,
+          denial_date: grant.denialDate,
+          expiration_date: grant.expirationDate,
+          spent_amount: grant.spentAmount || 0,
+          compliance_category: grant.complianceCategory,
+          program_manager: grant.programManager,
+          next_report_due: grant.nextReportDue,
+          onboarding_date: grant.onboardingDate,
+          is_extended: !!grant.isExtended,
+          renewal_status: grant.renewalStatus || 'None',
+          funder_portal_url: grant.funderPortalUrl,
+          grants_gov_id: grant.grantsGovId,
+        })
+      })
+
+      if (response.ok) {
+        await fetchGrants()
+        return true
+      }
+
+      return false
+    } catch (error) {
+      console.error('Failed to create grant:', error)
+      return false
+    }
+  }
+
   // Fetch when user logs in
   useEffect(() => {
     if (isAuthenticated) {
@@ -977,7 +1025,7 @@ function App() {
               onGrantTracked={() => setActivePage('lifecycle')}
             />
           )}
-          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'applied')} onSaveEdit={saveGrantUpdate} />}
+          {activePage === 'lifecycle' && <Lifecycle grants={grants} onUpdateStatus={updateGrantStatus} onReActivate={(id) => updateGrantStatus(id, 'applied')} onSaveEdit={saveGrantUpdate} onCreateGrant={createGrant} />}
           {activePage === 'portfolio' && <Portfolio grants={grants} onAction={handleAction} onSaveEdit={saveGrantUpdate} />}
           {activePage === 'reporting' && <Reporting grants={grants} />}
         </div>
