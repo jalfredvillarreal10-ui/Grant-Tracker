@@ -201,7 +201,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   ) => {
     const awardCeiling = details.award_ceiling ?? ('award_ceiling' in grant ? grant.award_ceiling ?? null : null);
     const awardFloor = details.award_floor ?? ('award_floor' in grant ? grant.award_floor ?? null : null);
-    const amount = awardCeiling ?? ('amount' in grant ? grant.amount || 0 : 0);
+    const amount = 'amount' in grant ? grant.amount || 0 : 0;
     const isTracking = status === 'applied';
 
     return {

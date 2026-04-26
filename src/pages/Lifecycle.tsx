@@ -62,6 +62,8 @@ const archivedGrants = grants
             grant={grant}
             onUpdateStatus={handleUpdateStatus}
             onSaveEdit={onSaveEdit}
+            summaryMetric="ceiling"
+            approvedDetailMetric="ceiling"
           />
         ))}
       </div>
@@ -125,6 +127,8 @@ const archivedGrants = grants
                       onReActivate={onReActivate}
                       onShowFeedback={setSelectedFeedback}
                       onSaveEdit={onSaveEdit}
+                      summaryMetric="ceiling"
+                      approvedDetailMetric="ceiling"
                     />
                   ))}
                 </div>

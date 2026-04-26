@@ -26,6 +26,8 @@ interface GrantCardProps {
   onReActivate?: (id: string) => void;
   onShowFeedback?: (grant: Grant) => void;
   onSaveEdit?: (grant: Grant) => Promise<boolean | void>;
+  summaryMetric?: 'amount' | 'ceiling';
+  approvedDetailMetric?: 'amount' | 'ceiling';
 }
 
 type EditableGrantFields = {
@@ -230,6 +232,8 @@ const GrantCard: React.FC<GrantCardProps> = ({
   onReActivate,
   onShowFeedback,
   onSaveEdit,
+  summaryMetric = 'amount',
+  approvedDetailMetric = 'amount',
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -269,14 +273,23 @@ const GrantCard: React.FC<GrantCardProps> = ({
       : grant.deadline || grant.expectedNotificationDate || 'Pending';
 
   const primaryLabel = 'Issuing Agency';
-  const secondaryLabel = 'Award Value';
+  const secondaryLabel = summaryMetric === 'ceiling' ? 'Award Ceiling' : 'Award Amount';
   const grantUrl =
     grant.grantsGovId
       ? `https://www.grants.gov/search-results-detail/${grant.grantsGovId}`
       : grant.funderPortalUrl ||
         `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(grant.funderId)}`;
-  const awardValue = grant.awardCeiling ?? grant.amount;
-  const hasAwardAmount = awardValue > 0;
+  const awardAmount = grant.amount > 0 ? grant.amount : 0;
+  const summaryValue = summaryMetric === 'ceiling' ? (grant.awardCeiling ?? 0) : awardAmount;
+  const summaryDisplayValue = summaryValue > 0 ? formatCurrency(summaryValue) : 'Unconfirmed';
+  const hasExpandedAwardAmount =
+    awardAmount > 0 ||
+    grant.awardCeiling != null ||
+    grant.awardFloor != null;
+  const approvedDetailValue =
+    approvedDetailMetric === 'ceiling'
+      ? (grant.awardCeiling != null ? formatCurrency(grant.awardCeiling) : 'Unconfirmed')
+      : (awardAmount > 0 ? formatCurrency(awardAmount) : 'Unconfirmed');
 
   const updateDraft = <K extends keyof EditableGrantFields>(field: K, value: EditableGrantFields[K]) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -432,7 +445,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${hasAwardAmount ? 2 : 1}, minmax(0, 1fr))`, gap: '20px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             {detailIcon(<Building2 className="w-5 h-5 text-[#003366]" />)}
             <div>
@@ -443,17 +456,15 @@ const GrantCard: React.FC<GrantCardProps> = ({
             </div>
           </div>
 
-          {hasAwardAmount && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              {detailIcon(<Trophy className="w-5 h-5 text-[#003366]" />, true)}
-              <div>
-                <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
-                  {secondaryLabel}
-                </p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{formatCurrency(awardValue)}</p>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            {detailIcon(<Trophy className="w-5 h-5 text-[#003366]" />, true)}
+            <div>
+              <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
+                {secondaryLabel}
+              </p>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{summaryDisplayValue}</p>
             </div>
-          )}
+          </div>
         </div>
 
         <div style={{ borderTop: '1px solid #e8eef6', paddingTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
@@ -647,11 +658,13 @@ const GrantCard: React.FC<GrantCardProps> = ({
               </>
             ) : (
               <>
-                {hasAwardAmount && (
+                {hasExpandedAwardAmount && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                     <InfoCard
-                      label="Award Value"
-                      value={formatCurrency(awardValue)}
+                      label={summaryMetric === 'ceiling' ? 'Award Ceiling' : 'Award Amount'}
+                      value={summaryMetric === 'ceiling'
+                        ? (grant.awardCeiling != null ? formatCurrency(grant.awardCeiling) : 'Unconfirmed')
+                        : formatCurrency(awardAmount)}
                       icon={<Trophy className="h-4 w-4" />}
                       tone={isApproved ? 'emerald' : 'navy'}
                     />
@@ -708,7 +721,12 @@ const GrantCard: React.FC<GrantCardProps> = ({
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                       <InfoCard label="Expiration Date" value={grant.expirationDate || 'No expiration set'} icon={<CalendarClock className="h-4 w-4" />} tone="emerald" />
-                      <InfoCard label="Award Amount" value={hasAwardAmount ? formatCurrency(awardValue) : 'Not provided'} icon={<Trophy className="h-4 w-4" />} tone="emerald" />
+                      <InfoCard
+                        label={approvedDetailMetric === 'ceiling' ? 'Award Ceiling' : 'Award Amount'}
+                        value={approvedDetailValue}
+                        icon={<Trophy className="h-4 w-4" />}
+                        tone="emerald"
+                      />
                     </div>
 
                     <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>

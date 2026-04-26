@@ -100,6 +100,7 @@ const Portfolio: React.FC<PortfolioProps> = ({ grants, onAction, onSaveEdit }) =
             key={grant.id} 
             grant={grant} 
             onSaveEdit={onSaveEdit}
+            approvedDetailMetric="ceiling"
             onAction={(id, action) => {
               if (action === 'close') {
                 setGrantForCloseout(grant)

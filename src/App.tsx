@@ -235,11 +235,11 @@ function App() {
 
                 const updatedGrant: Grant = {
                   ...grant,
-                  amount: details.award_ceiling ?? grant.amount,
+                  amount: grant.amount,
                   awardFloor: details.award_floor ?? grant.awardFloor,
                   awardCeiling: details.award_ceiling ?? grant.awardCeiling,
                   remainingAmount:
-                    (details.award_ceiling ?? grant.amount) - (grant.spentAmount || 0),
+                    grant.amount - (grant.spentAmount || 0),
                 };
 
                 const saveResponse = await fetch(`http://localhost:8000/api/grants/${grant.id}`, {
