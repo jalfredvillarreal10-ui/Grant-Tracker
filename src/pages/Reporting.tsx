@@ -75,6 +75,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
       { header: 'Total Award', key: 'totalAward', width: 16 },
       { header: 'Current Status', key: 'currentStatus', width: 18 },
       { header: 'Application Deadline', key: 'applicationDeadline', width: 18 },
+      { header: 'Expiration Date', key: 'expirationDate', width: 18 },
       { header: 'Internal Lead', key: 'internalLead', width: 22 },
     ];
 
@@ -91,6 +92,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
         totalAward: Number(grant.amount ?? 0),
         currentStatus: grant.status.charAt(0).toUpperCase() + grant.status.slice(1),
         applicationDeadline: grant.deadline ?? '',
+        expirationDate: grant.expirationDate ?? 'N/A',
         internalLead: grant.internalLead ?? 'Unassigned',
       });
     });
@@ -120,7 +122,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
     });
 
     worksheet.getColumn('totalAward').numFmt = '$#,##0.00';
-    worksheet.autoFilter = 'A1:G1';
+    worksheet.autoFilter = 'A1:H1';
 
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
