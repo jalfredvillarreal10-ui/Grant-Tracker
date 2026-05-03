@@ -1,6 +1,8 @@
-import React from 'react';
-import { Calendar, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, Download, FileSpreadsheet, FileText, X } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { Grant } from '../types/grant';
 
 interface ReportingProps {
@@ -11,6 +13,17 @@ type TimelineEvent = {
   date: string;
   title: string;
   status: Grant['status'];
+};
+
+type ReportRow = {
+  grantId: string;
+  opportunityTitle: string;
+  issuingAgency: string;
+  totalAward: number;
+  currentStatus: string;
+  applicationDeadline: string;
+  expirationDate: string;
+  internalLead: string;
 };
 
 const statusLabel: Record<Grant['status'], string> = {
@@ -46,7 +59,38 @@ function formatExactDate(value: string) {
   }).format(date);
 }
 
+function formatFileDate() {
+  const today = new Date();
+
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function getReportRows(items: Grant[]): ReportRow[] {
+  return items.map((grant) => {
+    const record = grant as Grant & {
+      grant_number?: string;
+      agency?: string;
+    };
+
+    return {
+      grantId: record.grant_number ?? grant.funderId,
+      opportunityTitle: grant.title,
+      issuingAgency: record.agency ?? grant.source,
+      totalAward: Number(grant.amount ?? 0),
+      currentStatus: statusLabel[grant.status],
+      applicationDeadline: grant.deadline ?? '',
+      expirationDate: grant.expirationDate ?? 'N/A',
+      internalLead: grant.internalLead ?? 'Unassigned',
+    };
+  });
+}
+
 const Reporting: React.FC<ReportingProps> = ({ grants }) => {
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const filteredGrants = grants;
 
   const timelineEvents: TimelineEvent[] = grants
@@ -63,6 +107,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
     .reduce((accumulator, grant) => accumulator + Number(grant.amount || 0), 0);
 
   const handleExportExcel = async (items: Grant[]) => {
+    const reportRows = getReportRows(items);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Executive Grants', {
       views: [{ state: 'frozen', ySplit: 1 }],
@@ -79,22 +124,8 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
       { header: 'Internal Lead', key: 'internalLead', width: 22 },
     ];
 
-    items.forEach((grant) => {
-      const record = grant as Grant & {
-        grant_number?: string;
-        agency?: string;
-      };
-
-      worksheet.addRow({
-        grantId: record.grant_number ?? grant.funderId,
-        opportunityTitle: grant.title,
-        issuingAgency: record.agency ?? grant.source,
-        totalAward: Number(grant.amount ?? 0),
-        currentStatus: grant.status.charAt(0).toUpperCase() + grant.status.slice(1),
-        applicationDeadline: grant.deadline ?? '',
-        expirationDate: grant.expirationDate ?? 'N/A',
-        internalLead: grant.internalLead ?? 'Unassigned',
-      });
+    reportRows.forEach((row) => {
+      worksheet.addRow(row);
     });
 
     const headerRow = worksheet.getRow(1);
@@ -134,12 +165,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
       });
     });
 
-    const today = new Date();
-    const formattedDate = [
-      today.getFullYear(),
-      String(today.getMonth() + 1).padStart(2, '0'),
-      String(today.getDate()).padStart(2, '0'),
-    ].join('-');
+    const formattedDate = formatFileDate();
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob(
@@ -152,6 +178,108 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
     link.download = `Laredo_Executive_Grants_Report_${formattedDate}.xlsx`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportPdf = (items: Grant[]) => {
+    const reportRows = getReportRows(items);
+    const formattedDate = formatFileDate();
+    const document = new jsPDF({
+      orientation: 'landscape',
+      unit: 'pt',
+      format: 'letter',
+    });
+
+    document.setProperties({
+      title: 'Laredo Executive Grants Report',
+      subject: 'Executive grants report',
+      creator: 'LHGP Portal',
+    });
+
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(16);
+    document.text('Laredo Executive Grants Report', 40, 42);
+
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(9);
+    document.setTextColor(90, 100, 116);
+    document.text(`Generated ${formattedDate} | ${reportRows.length} grants`, 40, 60);
+
+    autoTable(document, {
+      startY: 82,
+      head: [[
+        'Grant ID',
+        'Opportunity Title',
+        'Issuing Agency',
+        'Total Award',
+        'Status',
+        'Deadline',
+        'Expiration',
+        'Internal Lead',
+      ]],
+      body: reportRows.map((row) => [
+        row.grantId,
+        row.opportunityTitle,
+        row.issuingAgency,
+        formatCurrency(row.totalAward),
+        row.currentStatus,
+        row.applicationDeadline,
+        row.expirationDate,
+        row.internalLead,
+      ]),
+      theme: 'grid',
+      headStyles: {
+        fillColor: [0, 33, 88],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      bodyStyles: {
+        fontSize: 8,
+        cellPadding: 4,
+        valign: 'middle',
+      },
+      columnStyles: {
+        0: { cellWidth: 82 },
+        1: { cellWidth: 156 },
+        2: { cellWidth: 128 },
+        3: { cellWidth: 72, halign: 'right' },
+        4: { cellWidth: 62 },
+        5: { cellWidth: 64 },
+        6: { cellWidth: 64 },
+        7: { cellWidth: 74 },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      margin: {
+        left: 40,
+        right: 40,
+      },
+      didDrawPage: () => {
+        const pageNumber = document.getCurrentPageInfo().pageNumber;
+        document.setFont('helvetica', 'normal');
+        document.setFontSize(8);
+        document.setTextColor(120, 130, 145);
+        document.text(
+          `Page ${pageNumber}`,
+          document.internal.pageSize.getWidth() - 72,
+          document.internal.pageSize.getHeight() - 24
+        );
+      },
+    });
+
+    document.save(`Laredo_Executive_Grants_Report_${formattedDate}.pdf`);
+  };
+
+  const handleExportFormat = async (format: 'xlsx' | 'pdf') => {
+    setIsExportDialogOpen(false);
+
+    if (format === 'xlsx') {
+      await handleExportExcel(filteredGrants);
+      return;
+    }
+
+    handleExportPdf(filteredGrants);
   };
 
   return (
@@ -188,14 +316,150 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
         </div>
         <button
           className="flex items-center gap-2 rounded-[0.9rem] bg-laredo-navy px-[1.35rem] py-[0.9rem] font-bold text-white transition hover:brightness-110 dark:bg-laredo-gold-new dark:text-black"
-          onClick={() => handleExportExcel(filteredGrants)}
+          onClick={() => setIsExportDialogOpen(true)}
           style={{
             boxShadow: '0 18px 30px rgba(0, 45, 98, 0.16)',
           }}
         >
-          <Download className="w-4 h-4" /> Export Executive Excel
+          <Download className="w-4 h-4" /> Export Executive Report
         </button>
       </header>
+
+      {isExportDialogOpen && (
+        <div
+          role="presentation"
+          onClick={() => setIsExportDialogOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: 'min(100%, 430px)',
+              borderRadius: '0.75rem',
+              border: '1px solid rgba(148, 163, 184, 0.22)',
+              backgroundColor: 'var(--bg-card)',
+              boxShadow: '0 24px 70px rgba(15, 23, 42, 0.24)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                padding: '1.1rem 1.25rem',
+                borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
+              }}
+            >
+              <h2
+                id="export-dialog-title"
+                style={{
+                  margin: 0,
+                  fontSize: '1.05rem',
+                  fontWeight: 800,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                Choose Export Format
+              </h2>
+              <button
+                type="button"
+                aria-label="Close export options"
+                onClick={() => setIsExportDialogOpen(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '2rem',
+                  height: '2rem',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: '0.85rem',
+                padding: '1.25rem',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => void handleExportFormat('pdf')}
+                style={{
+                  display: 'flex',
+                  minHeight: '7.5rem',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '0.8rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid rgba(148, 163, 184, 0.28)',
+                  backgroundColor: 'var(--bg-panel)',
+                  padding: '1rem',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <FileText size={24} color="#002158" />
+                <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>PDF</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                  PDF Report
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleExportFormat('xlsx')}
+                style={{
+                  display: 'flex',
+                  minHeight: '7.5rem',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '0.8rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid rgba(148, 163, 184, 0.28)',
+                  backgroundColor: 'var(--bg-panel)',
+                  padding: '1rem',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <FileSpreadsheet size={24} color="#007a3d" />
+                <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>XLSX</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                  Editable spreadsheet
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section
         style={{
