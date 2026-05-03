@@ -41,9 +41,104 @@ type BackendGrant = {
 };
 
 type FavoriteGrant = BackendGrant;
+type GrantPayload = {
+  grant_number: string;
+  title: string;
+  agency: Grant['source'];
+  deadline?: string;
+  amount: number;
+  award_floor?: number;
+  award_ceiling?: number;
+  status: GrantStatus;
+  submission_date?: string;
+  expected_notification_date?: string;
+  poc_name?: string;
+  poc_email?: string;
+  internal_lead?: string;
+  application_status?: Grant['applicationStatus'];
+  rejection_reason?: Grant['rejectionReason'];
+  feedback_summary?: string;
+  denial_date?: string;
+  expiration_date?: string;
+  spent_amount: number;
+  compliance_category?: Grant['complianceCategory'];
+  program_manager?: string;
+  next_report_due?: string;
+  onboarding_date?: string;
+  is_extended: boolean;
+  renewal_status: Grant['renewalStatus'];
+  funder_portal_url?: string;
+  grants_gov_id?: string;
+};
 
 function optionalString(value?: string | null) {
   return value ?? undefined;
+}
+
+function mapBackendGrant(g: BackendGrant, idPrefix = ''): Grant {
+  return {
+    id: `${idPrefix}${g.id}`,
+    funderId: g.grant_number,
+    title: g.title,
+    source: g.agency,
+    amount: g.amount || 0,
+    awardFloor: g.award_floor ?? undefined,
+    awardCeiling: g.award_ceiling ?? undefined,
+    status: g.status,
+    deadline: optionalString(g.deadline),
+    submissionDate: optionalString(g.submission_date),
+    expectedNotificationDate: optionalString(g.expected_notification_date),
+    pocName: optionalString(g.poc_name),
+    pocEmail: optionalString(g.poc_email),
+    internalLead: optionalString(g.internal_lead),
+    applicationStatus: g.application_status,
+    rejectionReason: g.rejection_reason,
+    feedbackSummary: optionalString(g.feedback_summary),
+    denialDate: optionalString(g.denial_date),
+    expirationDate: optionalString(g.expiration_date),
+    spentAmount: g.spent_amount || 0,
+    remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
+    complianceCategory: g.compliance_category,
+    programManager: optionalString(g.program_manager),
+    nextReportDue: optionalString(g.next_report_due),
+    onboardingDate: optionalString(g.onboarding_date),
+    isExtended: !!g.is_extended,
+    renewalStatus: g.renewal_status || 'None',
+    funderPortalUrl: optionalString(g.funder_portal_url),
+    grantsGovId: optionalString(g.grants_gov_id),
+  };
+}
+
+function toGrantPayload(grant: Grant, options?: { deadlineFallback?: string }): GrantPayload {
+  return {
+    grant_number: grant.funderId,
+    title: grant.title,
+    agency: grant.source,
+    deadline: grant.deadline || options?.deadlineFallback,
+    amount: grant.amount,
+    award_floor: grant.awardFloor,
+    award_ceiling: grant.awardCeiling,
+    status: grant.status,
+    submission_date: grant.submissionDate,
+    expected_notification_date: grant.expectedNotificationDate,
+    poc_name: grant.pocName,
+    poc_email: grant.pocEmail,
+    internal_lead: grant.internalLead,
+    application_status: grant.applicationStatus,
+    rejection_reason: grant.rejectionReason,
+    feedback_summary: grant.feedbackSummary,
+    denial_date: grant.denialDate,
+    expiration_date: grant.expirationDate,
+    spent_amount: grant.spentAmount || 0,
+    compliance_category: grant.complianceCategory,
+    program_manager: grant.programManager,
+    next_report_due: grant.nextReportDue,
+    onboarding_date: grant.onboardingDate,
+    is_extended: !!grant.isExtended,
+    renewal_status: grant.renewalStatus || 'None',
+    funder_portal_url: grant.funderPortalUrl,
+    grants_gov_id: grant.grantsGovId,
+  };
 }
 
 type OpportunityDetailsResponse = {
@@ -185,37 +280,7 @@ function App() {
         const dbGrants: BackendGrant[] = await response.json();
         
         // Map backend database schema to your rich frontend UI schema
-        const mappedGrants: Grant[] = dbGrants.map((g) => ({
-          id: g.id.toString(),
-          funderId: g.grant_number,
-          title: g.title,
-          source: g.agency,
-          amount: g.amount || 0,
-          awardFloor: g.award_floor ?? undefined,
-          awardCeiling: g.award_ceiling ?? undefined,
-          status: g.status,
-          deadline: optionalString(g.deadline),
-          submissionDate: optionalString(g.submission_date),
-          expectedNotificationDate: optionalString(g.expected_notification_date),
-          pocName: optionalString(g.poc_name),
-          pocEmail: optionalString(g.poc_email),
-          internalLead: optionalString(g.internal_lead),
-          applicationStatus: g.application_status,
-          rejectionReason: g.rejection_reason,
-          feedbackSummary: optionalString(g.feedback_summary),
-          denialDate: optionalString(g.denial_date),
-          expirationDate: optionalString(g.expiration_date),
-          spentAmount: g.spent_amount || 0,
-          remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
-          complianceCategory: g.compliance_category,
-          programManager: optionalString(g.program_manager),
-          nextReportDue: optionalString(g.next_report_due),
-          onboardingDate: optionalString(g.onboarding_date),
-          isExtended: !!g.is_extended,
-          renewalStatus: g.renewal_status || 'None',
-          funderPortalUrl: optionalString(g.funder_portal_url),
-          grantsGovId: optionalString(g.grants_gov_id),
-        }));
+        const mappedGrants = dbGrants.map((g) => mapBackendGrant(g));
         
         setGrants(mappedGrants);
 
@@ -245,35 +310,7 @@ function App() {
                 const saveResponse = await fetch(`http://localhost:8000/api/grants/${grant.id}`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    grant_number: updatedGrant.funderId,
-                    title: updatedGrant.title,
-                    agency: updatedGrant.source,
-                    deadline: updatedGrant.deadline,
-                    amount: updatedGrant.amount,
-                    award_floor: updatedGrant.awardFloor,
-                    award_ceiling: updatedGrant.awardCeiling,
-                    status: updatedGrant.status,
-                    submission_date: updatedGrant.submissionDate,
-                    expected_notification_date: updatedGrant.expectedNotificationDate,
-                    poc_name: updatedGrant.pocName,
-                    poc_email: updatedGrant.pocEmail,
-                    internal_lead: updatedGrant.internalLead,
-                    application_status: updatedGrant.applicationStatus,
-                    rejection_reason: updatedGrant.rejectionReason,
-                    feedback_summary: updatedGrant.feedbackSummary,
-                    denial_date: updatedGrant.denialDate,
-                    expiration_date: updatedGrant.expirationDate,
-                    spent_amount: updatedGrant.spentAmount || 0,
-                    compliance_category: updatedGrant.complianceCategory,
-                    program_manager: updatedGrant.programManager,
-                    next_report_due: updatedGrant.nextReportDue,
-                    onboarding_date: updatedGrant.onboardingDate,
-                    is_extended: !!updatedGrant.isExtended,
-                    renewal_status: updatedGrant.renewalStatus || 'None',
-                    funder_portal_url: updatedGrant.funderPortalUrl,
-                    grants_gov_id: updatedGrant.grantsGovId,
-                  })
+                  body: JSON.stringify(toGrantPayload(updatedGrant))
                 });
 
                 return saveResponse.ok ? updatedGrant.id : null;
@@ -288,37 +325,7 @@ function App() {
             const refreshedResponse = await fetch('http://localhost:8000/api/grants');
             if (refreshedResponse.ok) {
               const refreshedDbGrants: BackendGrant[] = await refreshedResponse.json();
-              setGrants(refreshedDbGrants.map((g) => ({
-                id: g.id.toString(),
-                funderId: g.grant_number,
-                title: g.title,
-                source: g.agency,
-                amount: g.amount || 0,
-                awardFloor: g.award_floor ?? undefined,
-                awardCeiling: g.award_ceiling ?? undefined,
-                status: g.status,
-                deadline: optionalString(g.deadline),
-                submissionDate: optionalString(g.submission_date),
-                expectedNotificationDate: optionalString(g.expected_notification_date),
-                pocName: optionalString(g.poc_name),
-                pocEmail: optionalString(g.poc_email),
-                internalLead: optionalString(g.internal_lead),
-                applicationStatus: g.application_status,
-                rejectionReason: g.rejection_reason,
-                feedbackSummary: optionalString(g.feedback_summary),
-                denialDate: optionalString(g.denial_date),
-                expirationDate: optionalString(g.expiration_date),
-                spentAmount: g.spent_amount || 0,
-                remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
-                complianceCategory: g.compliance_category,
-                programManager: optionalString(g.program_manager),
-                nextReportDue: optionalString(g.next_report_due),
-                onboardingDate: optionalString(g.onboarding_date),
-                isExtended: !!g.is_extended,
-                renewalStatus: g.renewal_status || 'None',
-                funderPortalUrl: optionalString(g.funder_portal_url),
-                grantsGovId: optionalString(g.grants_gov_id),
-              })));
+              setGrants(refreshedDbGrants.map((g) => mapBackendGrant(g)));
             }
           }
         }
@@ -335,35 +342,7 @@ function App() {
       const response = await fetch(`http://localhost:8000/api/grants/${grant.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          grant_number: grant.funderId,
-          title: grant.title,
-          agency: grant.source,
-          deadline: grant.deadline,
-          amount: grant.amount,
-          award_floor: grant.awardFloor,
-          award_ceiling: grant.awardCeiling,
-          status: grant.status,
-          submission_date: grant.submissionDate,
-          expected_notification_date: grant.expectedNotificationDate,
-          poc_name: grant.pocName,
-          poc_email: grant.pocEmail,
-          internal_lead: grant.internalLead,
-          application_status: grant.applicationStatus,
-          rejection_reason: grant.rejectionReason,
-          feedback_summary: grant.feedbackSummary,
-          denial_date: grant.denialDate,
-          expiration_date: grant.expirationDate,
-          spent_amount: grant.spentAmount || 0,
-          compliance_category: grant.complianceCategory,
-          program_manager: grant.programManager,
-          next_report_due: grant.nextReportDue,
-          onboarding_date: grant.onboardingDate,
-          is_extended: !!grant.isExtended,
-          renewal_status: grant.renewalStatus || 'None',
-          funder_portal_url: grant.funderPortalUrl,
-          grants_gov_id: grant.grantsGovId,
-        })
+        body: JSON.stringify(toGrantPayload(grant))
       });
       if (response.ok) {
         setGrants((prev) =>
@@ -386,35 +365,7 @@ function App() {
       const response = await fetch('http://localhost:8000/api/grants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          grant_number: grant.funderId,
-          title: grant.title,
-          agency: grant.source,
-          deadline: grant.deadline || '2099-12-31',
-          amount: grant.amount,
-          award_floor: grant.awardFloor,
-          award_ceiling: grant.awardCeiling,
-          status: grant.status,
-          submission_date: grant.submissionDate,
-          expected_notification_date: grant.expectedNotificationDate,
-          poc_name: grant.pocName,
-          poc_email: grant.pocEmail,
-          internal_lead: grant.internalLead,
-          application_status: grant.applicationStatus,
-          rejection_reason: grant.rejectionReason,
-          feedback_summary: grant.feedbackSummary,
-          denial_date: grant.denialDate,
-          expiration_date: grant.expirationDate,
-          spent_amount: grant.spentAmount || 0,
-          compliance_category: grant.complianceCategory,
-          program_manager: grant.programManager,
-          next_report_due: grant.nextReportDue,
-          onboarding_date: grant.onboardingDate,
-          is_extended: !!grant.isExtended,
-          renewal_status: grant.renewalStatus || 'None',
-          funder_portal_url: grant.funderPortalUrl,
-          grants_gov_id: grant.grantsGovId,
-        })
+        body: JSON.stringify(toGrantPayload(grant, { deadlineFallback: '2099-12-31' }))
       })
 
       if (response.ok) {
@@ -518,55 +469,11 @@ function App() {
       }
 
       const dbFavorites: FavoriteGrant[] = await response.json()
-      const mappedFavorites: Grant[] = dbFavorites.map((g) => ({
-        id: `favorite-${g.id}`,
-        funderId: g.grant_number,
-        title: g.title,
-        source: g.agency,
-        amount: g.amount || 0,
-        awardFloor: g.award_floor ?? undefined,
-        awardCeiling: g.award_ceiling ?? undefined,
-        status: g.status,
-        deadline: optionalString(g.deadline),
-        submissionDate: optionalString(g.submission_date),
-        expectedNotificationDate: optionalString(g.expected_notification_date),
-        pocName: optionalString(g.poc_name),
-        pocEmail: optionalString(g.poc_email),
-        internalLead: optionalString(g.internal_lead),
-        applicationStatus: g.application_status,
-        rejectionReason: g.rejection_reason,
-        feedbackSummary: optionalString(g.feedback_summary),
-        denialDate: optionalString(g.denial_date),
-        expirationDate: optionalString(g.expiration_date),
-        spentAmount: g.spent_amount || 0,
-        remainingAmount: (g.amount || 0) - (g.spent_amount || 0),
-        complianceCategory: g.compliance_category,
-        programManager: optionalString(g.program_manager),
-        nextReportDue: optionalString(g.next_report_due),
-        onboardingDate: optionalString(g.onboarding_date),
-        isExtended: !!g.is_extended,
-        renewalStatus: g.renewal_status || 'None',
-        funderPortalUrl: optionalString(g.funder_portal_url),
-        grantsGovId: optionalString(g.grants_gov_id),
-      }))
+      const mappedFavorites = dbFavorites.map((g) => mapBackendGrant(g, 'favorite-'))
 
       setFavoriteGrants(mappedFavorites)
     } catch (error) {
       console.error('Failed to fetch favorites:', error)
-    }
-  }
-
-  const moveToApplied = async (id: string) => {
-    const grant = grants.find(g => g.id === id);
-    if (grant) {
-      const updatedGrant: Grant = {
-        ...grant,
-        status: 'applied',
-        submissionDate: new Date().toISOString().split('T')[0],
-        applicationStatus: 'Submitted'
-      };
-      await saveGrantUpdate(updatedGrant);
-      setActivePage('lifecycle');
     }
   }
 
@@ -1020,7 +927,6 @@ function App() {
           {activePage === 'discovery' && (
             <Discovery
               grants={grants}
-              onMoveToApplied={moveToApplied}
               onGrantSaved={fetchGrants}
               onGrantTracked={() => setActivePage('lifecycle')}
             />

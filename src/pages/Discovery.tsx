@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Search, AlertCircle, PlusCircle, CheckCircle2, Funnel, Star } from 'lucide-react';
 import type { Grant } from '../types/grant';
 
 interface DiscoveryProps {
   grants: Grant[];
-  onMoveToApplied?: (id: string) => void;
   onGrantSaved: () => Promise<void> | void;
   onGrantTracked?: () => void;
 }
@@ -90,6 +89,24 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
   const [opportunityDetailsById, setOpportunityDetailsById] = useState<Record<string, OpportunityDetails>>({});
   const [loadingDetailIds, setLoadingDetailIds] = useState<Set<string>>(new Set());
 
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/favorites');
+      if (!response.ok) {
+        throw new Error('Failed to fetch favorites');
+      }
+
+      const data: FavoriteGrant[] = await response.json();
+      const trackedIds = new Set(grants.map(grant => normalizeGrantNumber(grant.funderId)));
+      const filteredFavorites = data.filter(grant => !trackedIds.has(normalizeGrantNumber(grant.grant_number)));
+
+      setFavoriteGrants(filteredFavorites);
+      setFavoriteIds(new Set(filteredFavorites.map(grant => normalizeGrantNumber(grant.grant_number))));
+    } catch (fetchError) {
+      console.error('Failed to fetch favorites:', fetchError);
+    }
+  }, [grants]);
+
   useEffect(() => {
     void runSearch({
       keyword: '',
@@ -97,8 +114,11 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
       awardCeilingRange: DEFAULT_AWARD_CEILING_RANGE,
       page: 1,
     });
-    void fetchFavorites();
   }, []);
+
+  useEffect(() => {
+    void fetchFavorites();
+  }, [fetchFavorites]);
 
   useEffect(() => {
     const existingIds = new Set(grants.map(g => normalizeGrantNumber(g.funderId)));
@@ -153,24 +173,6 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
       }
       return next;
     });
-  };
-
-  const fetchFavorites = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/api/favorites');
-      if (!response.ok) {
-        throw new Error('Failed to fetch favorites');
-      }
-
-      const data: FavoriteGrant[] = await response.json();
-      const trackedIds = new Set(grants.map(grant => normalizeGrantNumber(grant.funderId)));
-      const filteredFavorites = data.filter(grant => !trackedIds.has(normalizeGrantNumber(grant.grant_number)));
-
-      setFavoriteGrants(filteredFavorites);
-      setFavoriteIds(new Set(filteredFavorites.map(grant => normalizeGrantNumber(grant.grant_number))));
-    } catch (fetchError) {
-      console.error('Failed to fetch favorites:', fetchError);
-    }
   };
 
   const loadOpportunityDetails = async (grant: SearchResult | FavoriteGrant) => {

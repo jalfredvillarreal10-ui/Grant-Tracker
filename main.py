@@ -19,7 +19,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS so your React frontend (usually on port 3000 or 5173) can talk to this API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"], 
@@ -155,7 +154,6 @@ def init_db():
         _ensure_notification_log_columns(cursor)
         conn.commit()
 
-# Run database initialization on startup when I get it working
 init_db()
 
 # Dependency to get a database connection per request
