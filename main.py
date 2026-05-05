@@ -506,6 +506,15 @@ def get_notification_history(conn: sqlite3.Connection = Depends(get_db_connectio
     ]
 
 
+@app.delete("/api/notifications/history", response_model=dict)
+def delete_notification_history(conn: sqlite3.Connection = Depends(get_db_connection)):
+    """Clear the notification log."""
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM notification_log')
+    conn.commit()
+    return {"message": "Notification history cleared successfully"}
+
+
 @app.get("/api/favorites", response_model=List[GrantResponse])
 def get_all_favorites(conn: sqlite3.Connection = Depends(get_db_connection)):
     """Fetch all favorite grants, ordered by the soonest deadline."""

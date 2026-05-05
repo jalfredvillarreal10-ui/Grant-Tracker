@@ -381,15 +381,27 @@ function App() {
     if (!confirmed) return
 
     try {
-      const response = await fetch('http://localhost:8000/api/grants', {
+      // Clear grants
+      const grantsResponse = await fetch('http://localhost:8000/api/grants', {
         method: 'DELETE',
       })
 
-      if (!response.ok) {
+      if (!grantsResponse.ok) {
         throw new Error('Failed to clear grant data')
       }
 
+      // Clear notifications
+      const notificationsResponse = await fetch('http://localhost:8000/api/notifications/history', {
+        method: 'DELETE',
+      })
+
+      if (!notificationsResponse.ok) {
+        console.warn('Failed to clear notification history on server')
+      }
+
       setGrants([])
+      setNotificationHistory([])
+      setFavoriteGrants([])
       await fetchGrants()
     } catch (error) {
       console.error('Failed to clear grant data:', error)
@@ -553,13 +565,14 @@ function App() {
       (item) =>
         (item.grant.status === 'available' || item.grant.status === 'applied') &&
         item.daysUntilEvent != null &&
+        item.daysUntilEvent >= 0 &&
         item.daysUntilEvent <= 7
     )
     .filter((item, index, items) => items.findIndex((candidate) => candidate.grant.funderId === item.grant.funderId) === index)
     .sort((a, b) => (a.daysUntilEvent ?? 9999) - (b.daysUntilEvent ?? 9999))
 
   const actionableDeadlineGrants = pipelineDeadlineGrants.filter(({ daysUntilEvent }) =>
-    daysUntilEvent != null && (daysUntilEvent === 7 || daysUntilEvent === 1 || daysUntilEvent <= 0)
+    daysUntilEvent != null && (daysUntilEvent === 7 || daysUntilEvent === 1 || daysUntilEvent === 0)
   )
 
   const awardExpirationGrants = grants
@@ -571,12 +584,13 @@ function App() {
       (item) =>
         item.grant.status === 'approved' &&
         item.daysUntilEvent != null &&
+        item.daysUntilEvent >= 0 &&
         item.daysUntilEvent <= 7
     )
     .sort((a, b) => (a.daysUntilEvent ?? 9999) - (b.daysUntilEvent ?? 9999))
 
   const actionableNotificationGrants = awardExpirationGrants.filter(({ daysUntilEvent }) =>
-    daysUntilEvent != null && (daysUntilEvent === 7 || daysUntilEvent === 1 || daysUntilEvent <= 0)
+    daysUntilEvent != null && (daysUntilEvent === 7 || daysUntilEvent === 1 || daysUntilEvent === 0)
   )
 
   const watchlistGrants = awardExpirationGrants.filter(({ daysUntilEvent }) =>
