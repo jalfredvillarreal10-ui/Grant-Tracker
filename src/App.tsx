@@ -146,29 +146,6 @@ type OpportunityDetailsResponse = {
   award_ceiling?: number | null;
 };
 
-type NotificationRunResult = {
-  checked_on: string;
-  notifications_sent: number;
-  archived_count: number;
-  duplicates_skipped?: number;
-  notifications: Array<{
-    grant_id: number;
-    grant_number: string;
-    title: string;
-    status_before_update: string;
-    event_kind: 'expiration' | 'deadline';
-    event_date: string;
-    expiration_date: string;
-    days_until_event: number;
-    days_until_expiration: number;
-    notice_type: string;
-    recipients: string[];
-    subject: string;
-    body: string;
-    archived: boolean;
-  }>;
-};
-
 type NotificationHistoryItem = {
   id: number;
   grant_id: number;
@@ -245,7 +222,6 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [isNotificationJobRunning, setIsNotificationJobRunning] = useState(false)
-  const [notificationRunResult, setNotificationRunResult] = useState<NotificationRunResult | null>(null)
   const [notificationError, setNotificationError] = useState('')
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryItem[]>([])
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -434,8 +410,6 @@ function App() {
         throw new Error('Failed to run notification check')
       }
 
-      const result: NotificationRunResult = await response.json()
-      setNotificationRunResult(result)
       await fetchGrants()
       await fetchNotificationHistory()
       await fetchFavorites()
@@ -687,7 +661,7 @@ function App() {
                         <section>
                           <div className="mb-3 flex items-center justify-between">
                             <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                              Application Deadlines
+                              Application Deadlines Alerts
                             </h3>
                             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
                               {pipelineDeadlineGrants.length}
@@ -771,46 +745,6 @@ function App() {
                                     {daysUntilEvent} day{daysUntilEvent === 1 ? '' : 's'} left
                                     {' - '}
                                     Monitoring only
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </section>
-
-                        <section>
-                          <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
-                              Last Manual Run
-                            </h3>
-                          </div>
-                          {!notificationRunResult ? (
-                            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                              Run the check to inspect the backend decision output here.
-                            </p>
-                          ) : notificationRunResult.notifications.length === 0 ? (
-                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600">
-                              Checked on {formatShortDate(notificationRunResult.checked_on)}. No new emails were triggered.
-                              {(notificationRunResult.duplicates_skipped ?? 0) > 0 && (
-                                <span> {notificationRunResult.duplicates_skipped} duplicate trigger{notificationRunResult.duplicates_skipped === 1 ? '' : 's'} were skipped.</span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {notificationRunResult.notifications.map((item) => (
-                                <div key={`${item.grant_id}-${item.notice_type}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="text-sm font-semibold text-slate-900">{item.notice_type}</div>
-                                    {item.archived && (
-                                      <span className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-red-700">
-                                        Archived
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="mt-1 text-sm text-slate-900">{item.title}</div>
-                                  <div className="mt-1 text-xs leading-5 text-slate-600">{item.subject}</div>
-                                  <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
-                                    {getNotificationEventLabel(item.event_kind)} {formatShortDate(item.event_date)}
                                   </div>
                                 </div>
                               ))}
