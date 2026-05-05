@@ -543,16 +543,16 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
 
         {activeTab === 'results' && (
           <>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            <div className="rounded-2xl border border-app-border bg-app-card p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
               <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 md:flex-row">
                 <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-[48%] text-slate-400" />
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-[48%] text-app-secondary-muted/70" />
                   <input
                     type="text"
                     placeholder="Search Grants.gov or leave blank to browse open and upcoming grants..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white p-3.5 pl-12 text-base text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400"
+                    className="w-full rounded-xl border border-app-border bg-app-muted p-3.5 pl-12 text-base text-app-primary outline-none transition-colors placeholder:text-app-secondary-muted/70 focus:border-app-primary focus:bg-app-card"
                   />
                 </div>
                 <button
@@ -565,16 +565,16 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
               </form>
 
               {(availableCategories.length > 0 || AWARD_CEILING_OPTIONS.length > 0) && (
-                <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 lg:flex-row lg:items-center">
+                <div className="mt-4 flex flex-col gap-3 border-t border-app-border pt-4 lg:flex-row lg:items-center">
                   <div className="flex flex-1 flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <Funnel className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm font-bold uppercase tracking-wider text-slate-500">Filter by Category</span>
+                      <Funnel className="h-4 w-4 text-app-secondary-muted/70" />
+                      <span className="text-sm font-bold uppercase tracking-wider text-app-secondary">Filter by Category</span>
                     </div>
                     <select
                       value={selectedCategory}
                       onChange={(e) => handleCategoryChange(e.target.value)}
-                      className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition-colors hover:bg-slate-100 focus:border-slate-400"
+                      className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-app-border bg-app-muted px-3 py-2 text-sm font-semibold text-app-primary outline-none transition-colors hover:bg-app-card focus:border-app-primary"
                     >
                       <option value="All">All</option>
                       {availableCategories.map(category => (
@@ -583,12 +583,12 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                         </option>
                       ))}
                     </select>
-                    <div className="hidden h-8 w-px bg-slate-200 lg:block" />
-                    <span className="text-sm font-bold uppercase tracking-wider text-slate-500">Award Ceiling</span>
+                    <div className="hidden h-8 w-px bg-app-border lg:block" />
+                    <span className="text-sm font-bold uppercase tracking-wider text-app-secondary">Award Ceiling</span>
                     <select
                       value={selectedAwardCeilingRange}
                       onChange={(e) => handleAwardCeilingChange(e.target.value)}
-                      className="min-w-[170px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition-colors hover:bg-slate-100 focus:border-slate-400"
+                      className="min-w-[170px] rounded-lg border border-app-border bg-app-muted px-3 py-2 text-sm font-semibold text-app-primary outline-none transition-colors hover:bg-app-card focus:border-app-primary"
                     >
                       {AWARD_CEILING_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -597,7 +597,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                       ))}
                     </select>
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 lg:ml-auto">
+                  <span className="text-xs font-bold uppercase tracking-[0.16em] text-app-secondary lg:ml-auto">
                     {totalResults.toLocaleString()} total results
                   </span>
                 </div>
@@ -674,7 +674,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                                       : `https://www.grants.gov/search-grants?keyword=${encodeURIComponent(result.grant_number)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="mb-1 block cursor-pointer text-base font-bold leading-tight text-blue-700 hover:text-app-primary hover:underline"
+                                    className="mb-1 block cursor-pointer text-base font-bold leading-tight text-[var(--text-link)] hover:text-app-primary hover:underline"
                                     title="View Official Opportunity Details"
                                   >
                                     {result.title}
@@ -793,7 +793,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                             href={grantUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block text-[1.7rem] font-bold leading-tight text-blue-700 hover:text-app-primary hover:underline"
+                            className="block text-[1.7rem] font-bold leading-tight text-[var(--text-link)] hover:text-app-primary hover:underline"
                             title="View Official Opportunity Details"
                           >
                             {grant.title}
@@ -864,7 +864,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ grants, onGrantSaved, onGrantTrac
                             href={grantUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block text-[1.7rem] font-bold leading-tight text-blue-700 hover:text-app-primary hover:underline"
+                            className="block text-[1.7rem] font-bold leading-tight text-[var(--text-link)] hover:text-app-primary hover:underline"
                             title="View Official Opportunity Details"
                           >
                             {grant.title}

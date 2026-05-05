@@ -139,7 +139,7 @@ function detailIcon(icon: React.ReactNode, strong = false) {
       style={{
         borderRadius: '16px',
         padding: '12px',
-        background: strong ? '#FFD21F' : '#FFF7DA',
+        background: strong ? 'var(--icon-strong-bg)' : 'var(--icon-soft-bg)',
         boxShadow: strong
           ? '0 8px 18px rgba(255,210,31,0.32)'
           : '0 6px 14px rgba(255,215,0,0.10)',
@@ -164,14 +164,14 @@ function InfoCard({
   icon: React.ReactNode;
   tone?: 'navy' | 'emerald' | 'slate';
 }) {
-  const iconTone = tone === 'emerald' ? '#047857' : tone === 'slate' ? '#64748b' : '#002d62';
+  const iconTone = tone === 'emerald' ? '#047857' : tone === 'slate' ? 'var(--text-muted)' : 'var(--text-link)';
 
   return (
     <div
       style={{
         borderRadius: '16px',
-        border: '1px solid #d9e2ef',
-        background: '#f8fafc',
+        border: '1px solid var(--border-color)',
+        background: 'var(--bg-panel)',
         padding: '12px 14px',
       }}
     >
@@ -182,12 +182,12 @@ function InfoCard({
           fontWeight: 900,
           textTransform: 'uppercase',
           letterSpacing: '0.16em',
-          color: '#94a3b8',
+          color: 'var(--text-secondary)',
         }}
       >
         {label}
       </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
         <span style={{ color: iconTone, display: 'flex' }}>{icon}</span>
         <span>{value}</span>
       </div>
@@ -204,7 +204,7 @@ function EditField({
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>
+      <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>
         {label}
       </span>
       {children}
@@ -216,11 +216,11 @@ function inputStyle(multiline = false): React.CSSProperties {
   return {
     width: '100%',
     borderRadius: '14px',
-    border: '1px solid #d9e2ef',
-    background: '#fff',
+    border: '1px solid var(--border-color)',
+    background: 'var(--bg-control)',
     padding: multiline ? '12px 14px' : '11px 14px',
     fontSize: '14px',
-    color: '#243F66',
+    color: 'var(--text-primary)',
     resize: multiline ? 'vertical' : undefined,
     minHeight: multiline ? '110px' : undefined,
     outline: 'none',
@@ -377,20 +377,20 @@ const GrantCard: React.FC<GrantCardProps> = ({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
-        background: '#fff',
-        borderTop: '1px solid #d9e2ef',
-        borderRight: '1px solid #d9e2ef',
-        borderBottom: '1px solid #d9e2ef',
-        borderLeft: `8px solid ${isUnsuccessful ? '#94a3b8' : isApproved ? '#0f8f5b' : '#003366'}`,
+        background: 'var(--bg-card)',
+        borderTop: '1px solid var(--border-color)',
+        borderRight: '1px solid var(--border-color)',
+        borderBottom: '1px solid var(--border-color)',
+        borderLeft: `8px solid ${isUnsuccessful ? 'var(--border-unsuccessful)' : isApproved ? '#0f8f5b' : 'var(--text-link)'}`,
         borderRadius: '22px',
         overflow: 'hidden',
-        boxShadow: '0 10px 24px rgba(15,23,42,0.07)',
+        boxShadow: 'var(--shadow-elevated)',
       }}
     >
       <div style={{ padding: '20px 22px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#003366', fontSize: '16px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-link)', fontSize: '16px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
               <Hash className="w-3 h-3" />
               {grant.funderId}
             </div>
@@ -401,10 +401,10 @@ const GrantCard: React.FC<GrantCardProps> = ({
               title="View Official Opportunity Details"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', maxWidth: '30rem', textDecoration: 'none' }}
             >
-              <h3 style={{ margin: 0, fontSize: '1.7rem', fontWeight: 700, lineHeight: 1.08, color: '#003366' }}>
+              <h3 style={{ margin: 0, fontSize: '1.7rem', fontWeight: 700, lineHeight: 1.08, color: 'var(--text-heading)' }}>
                 {grant.title}
               </h3>
-              <ExternalLink className="h-4 w-4" style={{ color: '#003366', flexShrink: 0 }} />
+              <ExternalLink className="h-4 w-4" style={{ color: 'var(--text-link)', flexShrink: 0 }} />
             </a>
           </div>
 
@@ -432,9 +432,9 @@ const GrantCard: React.FC<GrantCardProps> = ({
                     alignItems: 'center',
                     gap: '6px',
                     borderRadius: '999px',
-                    border: '1px solid #d9e2ef',
-                    background: isEditing ? '#eff6ff' : '#fff',
-                    color: '#003366',
+                    border: '1px solid var(--border-color)',
+                    background: isEditing ? 'var(--bg-panel)' : 'var(--bg-control)',
+                    color: 'var(--text-link)',
                     padding: '9px 14px',
                     fontSize: '12px',
                     fontWeight: 800,
@@ -460,30 +460,30 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            {detailIcon(<Building2 className="w-5 h-5 text-[#003366]" />)}
+              {detailIcon(<Building2 className="w-5 h-5 text-app-primary" />)}
             <div>
-              <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
+              <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>
                 {primaryLabel}
               </p>
-              <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#243F66', lineHeight: 1.35 }}>{grant.source}</p>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.35 }}>{grant.source}</p>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            {detailIcon(<Trophy className="w-5 h-5 text-[#003366]" />, true)}
+            {detailIcon(<Trophy className="w-5 h-5 text-app-primary" />, true)}
             <div>
-              <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#90A4C3' }}>
+              <p style={{ margin: '0 0 2px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>
                 {secondaryLabel}
               </p>
-              <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#003366', lineHeight: 1.35 }}>{summaryDisplayValue}</p>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: 'var(--text-heading)', lineHeight: 1.35 }}>{summaryDisplayValue}</p>
             </div>
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid #e8eef6', paddingTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Clock className="w-4 h-4 text-[#003366]" />
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#516E95' }}>
+            <Clock className="w-4 h-4 text-app-primary" />
+            <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-secondary)' }}>
               {isApproved ? `EXPIRATION: ${footerDate}` : `DEADLINE: ${footerDate}`}
             </span>
           </div>
@@ -492,7 +492,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
             <button
               type="button"
               onClick={() => setIsExpanded(prev => !prev)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', border: 'none', background: 'transparent', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#003366', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', border: 'none', background: 'transparent', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-link)', cursor: 'pointer' }}
             >
               View Details
               <ArrowRight className="w-3.5 h-3.5" />
@@ -501,16 +501,16 @@ const GrantCard: React.FC<GrantCardProps> = ({
         </div>
 
         {(isExpanded || isEditing) && (
-          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e8eef6', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {isEditing ? (
               <>
-                <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-panel)', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                     <div>
-                      <p style={{ margin: '0 0 6px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>
+                      <p style={{ margin: '0 0 6px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>
                         Edit Grant
                       </p>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#243F66' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
                         Update details directly from the card.
                       </div>
                     </div>
@@ -525,7 +525,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
                           onCancelEdit?.();
                         }}
                         disabled={isSavingEdit}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '14px', border: '1px solid #cbd5e1', padding: '11px 14px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer', opacity: isSavingEdit ? 0.6 : 1 }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '14px', border: '1px solid var(--border-color)', padding: '11px 14px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-secondary)', background: 'var(--bg-control)', cursor: 'pointer', opacity: isSavingEdit ? 0.6 : 1 }}
                       >
                         <X className="h-4 w-4" />
                         Cancel
@@ -694,15 +694,15 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
                 {isActiveApplication && (
                   <>
-                    <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
+                    <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-panel)', padding: '16px' }}>
                       <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>Status Tracking</span>
-                        <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#002d62' }}>{grant.applicationStatus || 'Submitted'}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>Status Tracking</span>
+                        <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-link)' }}>{grant.applicationStatus || 'Submitted'}</span>
                       </div>
-                      <div style={{ height: '8px', overflow: 'hidden', borderRadius: '999px', background: '#dbe3ee' }}>
-                        <div style={{ height: '100%', width: progressWidth, background: '#002d62', transition: 'width 700ms' }} />
+                      <div style={{ height: '8px', overflow: 'hidden', borderRadius: '999px', background: 'var(--status-progress-bg)' }}>
+                        <div style={{ height: '100%', width: progressWidth, background: 'var(--status-progress-fill)', transition: 'width 700ms' }} />
                       </div>
-                      <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94a3b8' }}>
+                      <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-secondary)' }}>
                         <span>Submitted</span>
                         <span style={{ textAlign: 'center' }}>Under Review</span>
                         <span style={{ textAlign: 'right' }}>Interview</span>
@@ -712,13 +712,13 @@ const GrantCard: React.FC<GrantCardProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                       <button
                         onClick={() => onUpdateStatus?.(grant.id, 'denied')}
-                        style={{ borderRadius: '14px', border: '1px solid #fecdd3', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#e11d48', background: '#fff', cursor: 'pointer' }}
+                        style={{ borderRadius: '14px', border: '1px solid #fecdd3', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#e11d48', background: 'var(--bg-control)', cursor: 'pointer' }}
                       >
                         Mark Denied
                       </button>
                       <button
                         onClick={() => onUpdateStatus?.(grant.id, 'withdrawn')}
-                        style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                        style={{ borderRadius: '14px', border: '1px solid var(--border-color)', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-secondary)', background: 'var(--bg-control)', cursor: 'pointer' }}
                       >
                         Withdraw
                       </button>
@@ -744,11 +744,11 @@ const GrantCard: React.FC<GrantCardProps> = ({
                       />
                     </div>
 
-                    <div style={{ borderRadius: '20px', border: '1px solid #d9e2ef', background: '#f8fafc', padding: '16px' }}>
+                    <div style={{ borderRadius: '20px', border: '1px solid var(--border-color)', background: 'var(--bg-panel)', padding: '16px' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                         <div>
-                          <p style={{ margin: '0 0 6px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#94a3b8' }}>Reporting Milestone</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+                          <p style={{ margin: '0 0 6px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>Reporting Milestone</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                             <CalendarClock className="h-4 w-4 text-emerald-700" />
                             <span>Next Report Due: {grant.nextReportDue || 'Not scheduled'}</span>
                           </div>
@@ -768,7 +768,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '8px' }}>
                       <button
                         onClick={() => onAction?.(grant.id, 'close')}
-                        style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                        style={{ borderRadius: '14px', border: '1px solid var(--border-color)', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-secondary)', background: 'var(--bg-control)', cursor: 'pointer' }}
                       >
                         Closeout Checklist
                       </button>
@@ -778,15 +778,15 @@ const GrantCard: React.FC<GrantCardProps> = ({
 
                 {isUnsuccessful && (
                   <>
-                    <div style={{ borderRadius: '20px', border: '1px dashed #cbd5e1', background: '#f8fafc', padding: '16px', fontSize: '14px', lineHeight: 1.6, color: '#475569' }}>
-                      <strong style={{ marginRight: '4px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.18em', color: '#64748b' }}>Decision Note</strong>
+                    <div style={{ borderRadius: '20px', border: '1px dashed var(--border-color)', background: 'var(--bg-panel)', padding: '16px', fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                      <strong style={{ marginRight: '4px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-muted)' }}>Decision Note</strong>
                       {grant.rejectionReason || 'No decision note recorded.'}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
                       <button
                         onClick={() => onShowFeedback?.(grant)}
-                        style={{ borderRadius: '14px', border: '1px solid #cbd5e1', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                        style={{ borderRadius: '14px', border: '1px solid var(--border-color)', padding: '12px 14px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-secondary)', background: 'var(--bg-control)', cursor: 'pointer' }}
                       >
                         View Feedback
                       </button>
@@ -804,7 +804,7 @@ const GrantCard: React.FC<GrantCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsExpanded(false)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#002d62', cursor: 'pointer', width: 'fit-content' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', border: 'none', background: 'transparent', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--text-link)', cursor: 'pointer', width: 'fit-content' }}
                 >
                   Hide Details
                   <ChevronUp className="h-4 w-4" />

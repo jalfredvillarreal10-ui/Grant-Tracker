@@ -463,11 +463,11 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
 
       <section
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%)',
-          border: '1px solid rgba(148, 163, 184, 0.18)',
+          background: 'var(--report-total-bg)',
+          border: '1px solid var(--border-color)',
           borderRadius: '1.75rem',
           padding: '2rem 2.25rem',
-          boxShadow: '0 24px 60px rgba(15, 23, 42, 0.08)',
+          boxShadow: 'var(--shadow-elevated)',
         }}
       >
         <div
@@ -476,7 +476,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
             fontWeight: 800,
             letterSpacing: '0.22em',
             textTransform: 'uppercase',
-            color: '#94a3b8',
+            color: 'var(--text-secondary)',
             marginBottom: '0.9rem',
           }}
         >
@@ -488,7 +488,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
             lineHeight: 1.05,
             fontWeight: 800,
             letterSpacing: '-0.05em',
-            color: '#0f172a',
+            color: 'var(--text-primary)',
           }}
         >
           {formatCurrency(totalSecured)}
@@ -516,7 +516,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
             borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
           }}
         >
-          <Calendar size={20} color="#0f172a" />
+          <Calendar size={20} color="var(--text-primary)" />
           <h2
             style={{
               margin: 0,
@@ -574,8 +574,8 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
                       minWidth: '88px',
                       padding: '0.38rem 0.7rem',
                       borderRadius: '999px',
-                      backgroundColor: '#eef2f6',
-                      color: '#64748b',
+                      backgroundColor: 'var(--bg-panel)',
+                      color: 'var(--text-secondary)',
                       fontSize: '0.68rem',
                       fontWeight: 800,
                       letterSpacing: '0.14em',
@@ -603,7 +603,7 @@ const Reporting: React.FC<ReportingProps> = ({ grants }) => {
                     fontSize: '0.83rem',
                     fontWeight: 700,
                     textTransform: 'capitalize',
-                    color: '#94a3b8',
+                    color: 'var(--text-secondary)',
                     justifySelf: 'start',
                   }}
                 >

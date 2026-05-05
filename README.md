@@ -9,15 +9,19 @@
 
 #### Frontend
 
+The frontend dependencies include Excel and PDF export support through `exceljs`, `jspdf`, and `jspdf-autotable`.
+
 ```powershell
 npm install
 ```
 
 #### Backend
 
+```powershell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt``
+pip install -r requirements.txt
+```
 
 If `py` is not available on the machine, use:
 

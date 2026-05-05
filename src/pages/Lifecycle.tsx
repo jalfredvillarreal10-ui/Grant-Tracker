@@ -155,27 +155,27 @@ const archivedGrants = grants
             alignItems: 'center',
             justifyContent: 'space-between',
             borderRadius: '20px',
-            border: '1px solid #d9e2ef',
-            background: '#fff',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-card)',
             padding: '16px 18px',
-            boxShadow: '0 8px 18px rgba(15,23,42,0.05)',
+            boxShadow: 'var(--shadow-elevated)',
             cursor: 'pointer',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ display: 'flex', width: '40px', height: '40px', alignItems: 'center', justifyContent: 'center', borderRadius: '14px', background: '#f3f6fb', color: '#002d62', flexShrink: 0 }}>
+            <div style={{ display: 'flex', width: '40px', height: '40px', alignItems: 'center', justifyContent: 'center', borderRadius: '14px', background: 'var(--bg-panel)', color: 'var(--text-link)', flexShrink: 0 }}>
               <Info size={18} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span style={{ fontWeight: 700, color: '#002d62' }}>Closed/Unsuccessful Applications</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Closed/Unsuccessful Applications</span>
               
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ borderRadius: '999px', border: '1px solid #e2e8f0', background: '#f8fafc', padding: '6px 12px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#64748b' }}>
+            <span style={{ borderRadius: '999px', border: '1px solid var(--border-color)', background: 'var(--bg-panel)', padding: '6px 12px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-secondary)' }}>
               {archivedGrants.length} Records
             </span>
-            <span style={{ color: '#64748b', display: 'flex' }}>
+            <span style={{ color: 'var(--text-secondary)', display: 'flex' }}>
               {isArchiveOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
             </span>
           </div>
@@ -205,9 +205,9 @@ const archivedGrants = grants
                 </div>
 
                 {archivedGrants.length === 0 && (
-                  <div style={{ borderRadius: '20px', border: '1px dashed #cbd5e1', background: '#fff', padding: '32px', textAlign: 'center', boxShadow: '0 8px 18px rgba(15,23,42,0.05)' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 700, color: '#002d62' }}>No archived applications yet.</p>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8' }}>Closed, denied, and withdrawn records will appear here automatically.</p>
+                  <div style={{ borderRadius: '20px', border: '1px dashed var(--border-color)', background: 'var(--bg-card)', padding: '32px', textAlign: 'center', boxShadow: 'var(--shadow-elevated)' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>No archived applications yet.</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>Closed, denied, and withdrawn records will appear here automatically.</p>
                   </div>
                 )}
               </div>
